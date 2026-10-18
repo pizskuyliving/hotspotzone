@@ -7,6 +7,11 @@ updates:
     groups:
       semua:
         patterns: ["*"]
+    ignore:
+      # TypeScript 7 (versi native) belum didukung pemeriksaan tipe Next.js.
+      # Naikkan manual setelah Next.js mendukungnya.
+      - dependency-name: typescript
+        update-types: ["version-update:semver-major"]
   - package-ecosystem: github-actions
     directory: /
     schedule:
