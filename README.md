@@ -10,7 +10,14 @@ Data langsung dari satelit NASA, diperbarui otomatis. Situs non-komersial.
 - **Citra satelit & peta asap**: NASA GIBS (VIIRS True Color dan MODIS MAIAC Aerosol Optical Depth), bisa pilih tanggal.
 - **Kualitas udara**: model CAMS dari Open-Meteo untuk 40 kota (tanpa key), ditambah stasiun darat WAQI kalau `WAQI_TOKEN` diisi.
 - **Arah asap**: panah angin di sekitar penanda AQI menunjukkan ke mana asap terbawa.
-- **Pemantauan otomatis**: browser memuat ulang data tiap 10 menit dan saat tab dibuka lagi.
+- **Pemantauan otomatis**: browser memuat ulang data tiap 10 menit dan saat tab dibuka lagi. Status di pojok menunjukkan umur data satelit terakhir (hijau ≤6 jam, kuning ≤14 jam, merah lebih lama).
+- **38 provinsi**: angka per provinsi dan nasional hanya menghitung titik di dalam Indonesia; titik di Malaysia, Papua Nugini, dan Timor Leste tetap tampil di peta sebagai konteks asap lintas batas.
+- **Tren 7 hari** per provinsi atau nasional (`/api/tren`, diperbarui tiap 3 jam).
+- **Zona waktu lokal**: jam di popup titik api memakai WIB/WITA/WIT sesuai provinsinya.
+- **Link yang bisa dibagikan**: `?hari=3&prov=kalimantan-tengah&lapisan=titik,aod&yakin=1&tgl=2026-10-15`.
+- **Heatmap** di zoom jauh, titik individual mulai zoom 5.
+- **PWA**: bisa dipasang di layar utama HP; halaman dan data terakhir tetap terbuka saat offline (`public/sw.js`).
+- **Vercel Analytics**: aktifkan di dashboard Vercel (tab Analytics) agar statistik pengunjung terkumpul.
 
 ## Jalankan di komputer (Windows)
 
@@ -39,7 +46,7 @@ Pemeriksaan: `npm run lint` (tipe), `npm test` (tes unit), `npm run build`. Keti
 4. Klik **Deploy**. Paket Hobby (gratis) cukup.
 
 Tidak perlu cron. Rute API memakai ISR: `/api/hotspot/[1|2|3]` disegarkan paling sering tiap 15 menit,
-`/api/aqi` tiap 10 menit, `/api/udara` tiap jam. Jadi FIRMS dan Open-Meteo tetap dipanggil jarang
+`/api/aqi` tiap 10 menit, `/api/udara` tiap jam, `/api/tren` tiap 3 jam. Jadi FIRMS dan Open-Meteo tetap dipanggil jarang
 walaupun pengunjungnya banyak.
 
 ## Struktur
@@ -51,7 +58,8 @@ app/api/aqi/route.ts              Stasiun WAQI (opsional)
 components/Peta.tsx               Peta MapLibre + layer GIBS
 components/Panel.tsx              Panel desktop / bottom sheet HP
 lib/                              Pengambil data, kategori AQI, kota, provinsi
-data/provinsi.json                Batas provinsi (BAKOSURTANAL, versi sederhana)
+data/provinsi.json                Batas 38 provinsi (turunan OpenStreetMap, disederhanakan)
+scripts/buat-provinsi.mjs         Membuat ulang data/provinsi.json dari GeoJSON OSM
 lib/situs.ts                      Nama, deskripsi, dan URL situs (SEO, robots, sitemap)
 app/opengraph-image.tsx           Gambar pratinjau saat link dibagikan
 lib/*.test.ts                     Tes unit (Vitest)
@@ -61,6 +69,6 @@ scripts/salin-worker.mjs          Menyalin worker MapLibre ke public/ saat dev/b
 ## Catatan
 
 - Titik api adalah anomali panas yang dideteksi satelit, belum tentu kebakaran. Data masuk FIRMS sekitar 3 jam setelah satelit melintas, jadi sifatnya near real-time.
-- Batas provinsi memakai 32 wilayah lama: Kalimantan Utara digabung ke Kalimantan Timur, Kepulauan Riau ke Riau, Sulawesi Barat ke Sulawesi Selatan, dan provinsi pemekaran Papua menjadi "Papua"/"Papua Barat". Ganti `data/provinsi.json` dengan batas terbaru bila ingin 38 provinsi.
+- Batas 38 provinsi berasal dari [kpu-osm-boundaries-2026](https://github.com/ahsa29/kpu-osm-boundaries-2026) (ekstrak OpenStreetMap 9 Oktober 2026), lisensi [ODbL 1.0](https://opendatacommons.org/licenses/odbl/1-0/), © OpenStreetMap contributors. `data/provinsi.json` adalah turunan yang disederhanakan (toleransi ~1 km) dan ikut berlisensi ODbL. Cara membuat ulang ada di `scripts/buat-provinsi.mjs`.
 - Nama layer asap ada di `lib/gibs.ts`. Kalau layer "Peta asap" kosong padahal hari cerah, cek nama layer di https://worldview.earthdata.nasa.gov lalu sesuaikan.
 - Syarat data: Open-Meteo gratis untuk non-komersial (CC BY 4.0), WAQI wajib atribusi dan tidak boleh untuk layanan berbayar. Atribusi sudah tercantum di peta dan kaki panel.

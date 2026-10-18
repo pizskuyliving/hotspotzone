@@ -12,7 +12,8 @@ import {
   type RasterTileSource,
   setWorkerUrl,
 } from "maplibre-gl";
-import { KEYAKINAN, waktuTitik, type StasiunAqi, type TitikApi, type UdaraKota } from "@/lib/tipe";
+import { KEYAKINAN, waktuTitik, type Bbox, type StasiunAqi, type TitikApi, type UdaraKota } from "@/lib/tipe";
+import { formatJam, zonaWaktu } from "@/lib/zona";
 import { EKSPRESI_WARNA_AQI, kategoriAqi } from "@/lib/aqi";
 import { LAYER_CITRA, urlWms } from "@/lib/gibs";
 import type { Lapisan } from "./Aplikasi";
@@ -25,6 +26,7 @@ export type PetaHandle = {
 type Props = {
   titik: TitikApi[];
   satelit: string[];
+  provinsi: { nama: string; bbox: Bbox }[];
   udara: UdaraKota[];
   stasiun: StasiunAqi[];
   lapisan: Lapisan;
@@ -45,19 +47,21 @@ const GAYA_CADANGAN = (gelap: boolean) => ({
 });
 const BATAS_INDONESIA: [[number, number], [number, number]] = [[94, -11.5], [141.5, 6.5]];
 
-const LAYER_TITIK = ["titik-pendar", "titik-inti"];
+const LAYER_TITIK = ["titik-panas", "titik-pendar", "titik-inti"];
+// Peralihan heatmap -> titik individual.
+const ZOOM_TITIK = 5;
 const LAYER_UDARA = ["udara-lingkar", "udara-angka"];
 const LAYER_STASIUN = ["stasiun-lingkar", "stasiun-angka"];
 
 const kosong = (): GeoJSON.FeatureCollection => ({ type: "FeatureCollection", features: [] });
 
-function geojsonTitik(titik: TitikApi[], satelit: string[]): GeoJSON.FeatureCollection {
+function geojsonTitik(titik: TitikApi[], satelit: string[], provinsi: { nama: string }[]): GeoJSON.FeatureCollection {
   return {
     type: "FeatureCollection",
-    features: titik.map(([lon, lat, frp, conf, waktu, sat, malam]) => ({
+    features: titik.map(([lon, lat, frp, conf, waktu, sat, malam, prov]) => ({
       type: "Feature",
       geometry: { type: "Point", coordinates: [lon, lat] },
-      properties: { frp, conf: KEYAKINAN[conf], waktu, sat: satelit[sat] ?? "?", dn: malam ? "N" : "D" },
+      properties: { frp, conf: KEYAKINAN[conf], waktu, sat: satelit[sat] ?? "?", dn: malam ? "N" : "D", prov: provinsi[prov]?.nama ?? "" },
     })),
   };
 }
@@ -114,14 +118,6 @@ function ikonPanah(gelap: boolean) {
   return g.getImageData(0, 0, s, s);
 }
 
-const fmtWaktu = new Intl.DateTimeFormat("id-ID", {
-  day: "numeric",
-  month: "short",
-  hour: "2-digit",
-  minute: "2-digit",
-  timeZone: "Asia/Jakarta",
-});
-
 const LABEL_KEYAKINAN: Record<string, string> = { tinggi: "Tinggi", sedang: "Sedang", rendah: "Rendah" };
 
 function esc(s: unknown) {
@@ -134,12 +130,15 @@ function arahMataAngin(derajat: number) {
 }
 
 function htmlTitik(f: MapGeoJSONFeature) {
-  const p = f.properties as { frp: number; conf: string; waktu: number; sat: string; dn: string };
+  const p = f.properties as { frp: number; conf: string; waktu: number; sat: string; dn: string; prov: string };
   const [lon, lat] = (f.geometry as GeoJSON.Point).coordinates;
+  // Jam ditampilkan dalam zona waktu lokasi titik api (WIB/WITA/WIT).
+  const zona = zonaWaktu(p.prov, lon);
   return `
     <div style="font-size:13px;line-height:1.5">
       <div style="font-weight:700;font-size:15px;margin-bottom:4px">🔥 Titik api</div>
-      <div>${esc(fmtWaktu.format(waktuTitik(Number(p.waktu))))} WIB · ${p.dn === "N" ? "malam" : "siang"}</div>
+      <div>${esc(formatJam(waktuTitik(Number(p.waktu)), zona))} · ${p.dn === "N" ? "malam" : "siang"}</div>
+      <div>${p.prov ? esc(p.prov) : '<span style="color:var(--muted)">Di luar wilayah Indonesia</span>'}</div>
       <div>Keyakinan: <b>${esc(LABEL_KEYAKINAN[p.conf] ?? p.conf)}</b></div>
       <div>Daya radiasi api: <b>${esc(Number(p.frp).toFixed(1))} MW</b></div>
       <div style="color:var(--muted)">Satelit ${esc(p.sat)} · ${lat.toFixed(4)}, ${lon.toFixed(4)}</div>
@@ -183,12 +182,12 @@ function htmlStasiun(f: MapGeoJSONFeature) {
     </div>`;
 }
 
-export default function Peta({ titik, satelit, udara, stasiun, lapisan, tanggal, onSiap }: Props) {
+export default function Peta({ titik, satelit, provinsi, udara, stasiun, lapisan, tanggal, onSiap }: Props) {
   const wadah = useRef<HTMLDivElement>(null);
   const petaRef = useRef<PetaMaplibre | null>(null);
   const siap = useRef(false);
-  const terakhir = useRef({ titik, satelit, udara, stasiun, lapisan, tanggal });
-  terakhir.current = { titik, satelit, udara, stasiun, lapisan, tanggal };
+  const terakhir = useRef({ titik, satelit, provinsi, udara, stasiun, lapisan, tanggal });
+  terakhir.current = { titik, satelit, provinsi, udara, stasiun, lapisan, tanggal };
 
   useEffect(() => {
     if (!wadah.current) return;
@@ -255,13 +254,36 @@ export default function Peta({ titik, satelit, udara, stasiun, lapisan, tanggal,
       peta.addImage("panah", ikonPanah(gelap), { pixelRatio: 2 });
 
       peta.addSource("titik", { type: "geojson", data: kosong(), attribution: "Titik api: NASA FIRMS" });
+      // Zoom jauh: heatmap (lebih ringan dan lebih mudah dibaca daripada puluhan ribu titik).
+      // Satu rona oranye, terang -> gelap = makin rapat; bobot dari keyakinan deteksi.
+      peta.addLayer({
+        id: "titik-panas",
+        type: "heatmap",
+        source: "titik",
+        maxzoom: ZOOM_TITIK + 1.5,
+        paint: {
+          "heatmap-weight": ["match", ["get", "conf"], "tinggi", 1, "sedang", 0.6, 0.3],
+          "heatmap-intensity": ["interpolate", ["linear"], ["zoom"], 3, 0.5, ZOOM_TITIK + 1.5, 1.6],
+          "heatmap-radius": ["interpolate", ["linear"], ["zoom"], 3, 5, ZOOM_TITIK + 1.5, 16],
+          "heatmap-color": [
+            "interpolate", ["linear"], ["heatmap-density"],
+            0, "rgba(253,208,162,0)",
+            0.15, "rgba(253,208,162,0.7)",
+            0.4, "#fd8d3c",
+            0.7, "#e6550d",
+            1, "#a63603",
+          ],
+          "heatmap-opacity": ["interpolate", ["linear"], ["zoom"], ZOOM_TITIK, 0.9, ZOOM_TITIK + 1.5, 0],
+        },
+      });
       peta.addLayer({
         id: "titik-pendar",
         type: "circle",
         source: "titik",
+        minzoom: ZOOM_TITIK,
         paint: {
           "circle-color": "#ff5a1f",
-          "circle-opacity": 0.22,
+          "circle-opacity": ["interpolate", ["linear"], ["zoom"], ZOOM_TITIK, 0, ZOOM_TITIK + 1, 0.22],
           "circle-blur": 1,
           "circle-radius": ["interpolate", ["linear"], ["zoom"], 3, 5, 7, 10, 12, 22],
         },
@@ -270,7 +292,10 @@ export default function Peta({ titik, satelit, udara, stasiun, lapisan, tanggal,
         id: "titik-inti",
         type: "circle",
         source: "titik",
+        minzoom: ZOOM_TITIK,
         paint: {
+          "circle-opacity": ["interpolate", ["linear"], ["zoom"], ZOOM_TITIK, 0, ZOOM_TITIK + 1, 1],
+          "circle-stroke-opacity": ["interpolate", ["linear"], ["zoom"], ZOOM_TITIK, 0, ZOOM_TITIK + 1, 1],
           "circle-color": ["match", ["get", "conf"], "tinggi", "#d7191c", "sedang", "#ff7b1c", "#ffc233"],
           "circle-radius": ["interpolate", ["linear"], ["zoom"], 3, 1.6, 7, 3.5, 12, 7],
           "circle-stroke-color": gelap ? "rgba(0,0,0,0.5)" : "rgba(255,255,255,0.8)",
@@ -391,8 +416,8 @@ export default function Peta({ titik, satelit, udara, stasiun, lapisan, tanggal,
   function terapkanSemua() {
     const peta = petaRef.current;
     if (!peta || !siap.current) return;
-    const { titik, satelit, udara, stasiun, lapisan, tanggal } = terakhir.current;
-    (peta.getSource("titik") as GeoJSONSource).setData(geojsonTitik(titik, satelit));
+    const { titik, satelit, provinsi, udara, stasiun, lapisan, tanggal } = terakhir.current;
+    (peta.getSource("titik") as GeoJSONSource).setData(geojsonTitik(titik, satelit, provinsi));
     (peta.getSource("udara") as GeoJSONSource).setData(geojsonUdara(udara));
     (peta.getSource("stasiun") as GeoJSONSource).setData(geojsonStasiun(stasiun));
     const tampil = (id: string, ya: boolean) => peta.setLayoutProperty(id, "visibility", ya ? "visible" : "none");
@@ -408,7 +433,7 @@ export default function Peta({ titik, satelit, udara, stasiun, lapisan, tanggal,
     }
   }
 
-  useEffect(terapkanSemua, [titik, satelit, udara, stasiun, lapisan, tanggal]);
+  useEffect(terapkanSemua, [titik, satelit, provinsi, udara, stasiun, lapisan, tanggal]);
 
   // Wadah luar yang diposisikan: CSS MapLibre memberi .maplibregl-map position: relative.
   return (

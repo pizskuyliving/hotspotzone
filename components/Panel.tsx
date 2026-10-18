@@ -1,15 +1,20 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { KEYAKINAN, waktuTitik, type ResponsAqi, type ResponsHotspot, type ResponsUdara } from "@/lib/tipe";
+import { KEYAKINAN, waktuTitik, type ResponsAqi, type ResponsHotspot, type ResponsTren, type ResponsUdara, type TitikApi } from "@/lib/tipe";
 import { KATEGORI_AQI, kategoriAqi } from "@/lib/aqi";
 import { LAYER_CITRA } from "@/lib/gibs";
 import type { Filter, Lapisan } from "./Aplikasi";
 import type { PetaHandle } from "./Peta";
+import GrafikTren from "./GrafikTren";
 
 type Props = {
   hotspot: ResponsHotspot | null;
+  titikWilayah: TitikApi[]; // titik di provinsi terpilih (atau semua), sebelum filter keyakinan
   jumlahTampil: number;
+  namaProv: string | null;
+  pilihProv: (nama: string | null) => void;
+  tren: ResponsTren | null;
   udara: ResponsUdara | null;
   aqi: ResponsAqi | null;
   memuat: boolean;
@@ -69,27 +74,56 @@ function Logo() {
   );
 }
 
-function StatusLangsung({ dicek, sekarang, memuat, onMuat }: { dicek: Date | null; sekarang: number; memuat: boolean; onMuat: () => void }) {
+// Satelit melintas dua kali sehari dan datanya masuk ~3 jam kemudian, jadi
+// jeda wajar sampai ~13 jam. Lebih dari itu kemungkinan FIRMS terlambat.
+function warnaUsia(jam: number) {
+  if (jam <= 6) return { titik: "bg-emerald-500", denyut: true };
+  if (jam <= 14) return { titik: "bg-amber-500", denyut: false };
+  return { titik: "bg-red-500", denyut: false };
+}
+
+function StatusData({ terbaru, dicek, sekarang, memuat, onMuat }: { terbaru: Date | null; dicek: Date | null; sekarang: number; memuat: boolean; onMuat: () => void }) {
+  const w = warnaUsia(terbaru ? (sekarang - terbaru.getTime()) / 3600000 : 0);
   return (
     <button
       onClick={onMuat}
       className="flex min-h-9 shrink-0 items-center gap-2 rounded-full bg-chip px-3 text-xs font-medium whitespace-nowrap text-redup active:scale-95"
-      aria-label="Muat ulang data"
+      aria-label={`Muat ulang data. Data satelit terakhir ${relatif(terbaru, sekarang)}, dicek ${relatif(dicek, sekarang)}.`}
+      title={`Dicek ${relatif(dicek, sekarang)} · ketuk untuk muat ulang`}
     >
       <span className="relative flex size-2">
-        <span className="absolute inline-flex size-full animate-ping rounded-full bg-emerald-500 opacity-60" />
-        <span className="relative inline-flex size-2 rounded-full bg-emerald-500" />
+        {w.denyut && <span className={`absolute inline-flex size-full animate-ping rounded-full opacity-60 ${w.titik}`} />}
+        <span className={`relative inline-flex size-2 rounded-full ${w.titik}`} />
       </span>
-      <span>{memuat ? "Memuat…" : <><span className="hidden min-[400px]:max-md:inline">Pantau otomatis · </span><span className="min-[400px]:max-md:hidden">Dicek </span>{relatif(dicek, sekarang)}</>}</span>
+      <span>{memuat || !terbaru ? "Memuat…" : <><span className="hidden min-[400px]:max-md:inline">Data satelit </span><span className="min-[400px]:max-md:hidden">Satelit </span>{relatif(terbaru, sekarang)}</>}</span>
       <span aria-hidden className={memuat ? "animate-spin" : ""}>↻</span>
     </button>
   );
+}
+
+async function bagikan(judul: string): Promise<string> {
+  const url = window.location.href;
+  if (navigator.share) {
+    try {
+      await navigator.share({ title: judul, url });
+    } catch {
+      // dibatalkan pengguna
+    }
+    return "";
+  }
+  try {
+    await navigator.clipboard.writeText(url);
+    return "Link disalin";
+  } catch {
+    return "Salin link dari bilah alamat";
+  }
 }
 
 export default function Panel(p: Props) {
   const [terbuka, setTerbuka] = useState(false);
   const [semuaProvinsi, setSemuaProvinsi] = useState(false);
   const [sekarang, setSekarang] = useState(() => Date.now());
+  const [pesanBagikan, setPesanBagikan] = useState("");
   const tarik = useRef<number | null>(null);
   const isi = useRef<HTMLDivElement>(null);
 
@@ -107,16 +141,22 @@ export default function Panel(p: Props) {
   const provinsiTampil = semuaProvinsi ? ringkasan : ringkasan.slice(0, 6);
   const maksProvinsi = ringkasan[0]?.jumlah ?? 1;
 
+  // Usia data dihitung dari deteksi terbaru se-Indonesia, bukan wilayah terpilih.
   const terbaru = useMemo(() => {
     let t = 0;
     for (const x of p.hotspot?.titik ?? []) if (x[4] > t) t = x[4];
     return t ? waktuTitik(t) : null;
   }, [p.hotspot]);
+  const terbaruWilayah = useMemo(() => {
+    let t = 0;
+    for (const x of p.titikWilayah) if (x[4] > t) t = x[4];
+    return t ? waktuTitik(t) : null;
+  }, [p.titikWilayah]);
 
-  // Rincian validitas: dihitung dari semua titik (tidak terpengaruh filter).
+  // Rincian validitas: semua titik di wilayah terpilih (tidak terpengaruh filter keyakinan).
   const rincian = useMemo(() => {
     const r = { tinggi: 0, sedang: 0, rendah: 0, siang: 0, malam: 0, satelit: new Map<string, { jumlah: number; lintas: number }>() };
-    for (const t of p.hotspot?.titik ?? []) {
+    for (const t of p.titikWilayah) {
       r[KEYAKINAN[t[3]]]++;
       if (t[6] === 1) r.malam++;
       else r.siang++;
@@ -127,8 +167,10 @@ export default function Panel(p: Props) {
       r.satelit.set(nama, s);
     }
     return r;
-  }, [p.hotspot]);
-  const totalSemua = p.hotspot?.titik.length ?? 0;
+  }, [p.titikWilayah, p.hotspot]);
+  const totalSemua = p.titikWilayah.length;
+
+  const trenTampil = p.tren && (p.namaProv ? (p.tren.provinsi[p.namaProv] ?? p.tren.hari.map(() => 0)) : p.tren.nasional);
 
   const kotaTerburuk = useMemo(
     () => [...(p.udara?.kota ?? [])].filter((k) => k.aqi != null).sort((a, b) => b.aqi! - a.aqi!).slice(0, 5),
@@ -148,7 +190,7 @@ export default function Panel(p: Props) {
         style={{ top: "max(12px, env(safe-area-inset-top))" }}
       >
         <Logo />
-        <StatusLangsung dicek={p.dicek} sekarang={sekarang} memuat={p.memuat} onMuat={p.muatUlang} />
+        <StatusData terbaru={terbaru} dicek={p.dicek} sekarang={sekarang} memuat={p.memuat} onMuat={p.muatUlang} />
       </header>
 
       <section
@@ -178,7 +220,7 @@ export default function Panel(p: Props) {
 
         <div className="hidden items-center justify-between gap-2 px-5 pt-5 md:flex">
           <Logo />
-          <StatusLangsung dicek={p.dicek} sekarang={sekarang} memuat={p.memuat} onMuat={p.muatUlang} />
+          <StatusData terbaru={terbaru} dicek={p.dicek} sekarang={sekarang} memuat={p.memuat} onMuat={p.muatUlang} />
         </div>
 
         <div ref={isi} className={`tanpa-scrollbar flex-1 overscroll-contain px-4 pb-4 md:overflow-y-auto md:px-5 ${terbuka ? "overflow-y-auto" : "overflow-hidden"}`}>
@@ -186,7 +228,7 @@ export default function Panel(p: Props) {
           <div className="flex items-end justify-between gap-3 pt-1 md:pt-4">
             <div>
               <div className="text-[11px] font-semibold tracking-wider text-redup uppercase">
-                Titik api · {RENTANG.find((r) => r.hari === p.hari)?.label} terakhir
+                Titik api · {p.namaProv ?? "Indonesia"} · {RENTANG.find((r) => r.hari === p.hari)?.label}
               </div>
               <div className="text-4xl leading-tight font-extrabold tabular-nums">
                 {p.hotspot ? fmtAngka.format(p.jumlahTampil) : "…"}
@@ -199,8 +241,30 @@ export default function Panel(p: Props) {
             )}
           </div>
           <div className="mt-0.5 text-xs text-redup">
-            {terbaru ? `Deteksi terbaru ${fmtJam.format(terbaru)} WIB` : " "}
-            {ringkasan[0] && <> · terbanyak di <b className="text-teks">{ringkasan[0].nama}</b></>}
+            {terbaruWilayah ? `Deteksi terbaru ${fmtJam.format(terbaruWilayah)} WIB` : p.hotspot ? "Tidak ada deteksi" : " "}
+            {!p.namaProv && ringkasan[0] && <> · terbanyak di <b className="text-teks">{ringkasan[0].nama}</b></>}
+          </div>
+          <div className={`mt-2 flex flex-wrap items-center gap-2 ${terbuka ? "" : "max-md:hidden"}`}>
+            {p.namaProv && (
+              <button
+                onClick={() => p.pilihProv(null)}
+                className="flex min-h-8 items-center gap-1.5 rounded-full bg-aksen-lembut px-3 text-xs font-semibold text-aksen"
+                aria-label={`Hapus pilihan ${p.namaProv}, tampilkan seluruh Indonesia`}
+              >
+                {p.namaProv} <span aria-hidden>✕</span>
+              </button>
+            )}
+            <button
+              onClick={async () => {
+                const pesan = await bagikan(`Titik api ${p.namaProv ?? "Indonesia"} · hotspotzone.id`);
+                setPesanBagikan(pesan);
+                if (pesan) setTimeout(() => setPesanBagikan(""), 2500);
+              }}
+              className="flex min-h-8 items-center gap-1.5 rounded-full border border-garis px-3 text-xs font-medium"
+            >
+              <span aria-hidden>↗</span> Bagikan tampilan ini
+            </button>
+            <span role="status" className="text-xs text-redup">{pesanBagikan}</span>
           </div>
 
           {p.hotspot?.demo && (
@@ -339,6 +403,16 @@ export default function Panel(p: Props) {
             </div>
           )}
 
+          {trenTampil && (
+            <>
+              <h2 className="mt-5 mb-1 text-sm font-bold">Tren 7 hari · {p.namaProv ?? "Indonesia"}</h2>
+              <p className="mb-6 text-[11px] text-redup">
+                Jumlah deteksi per hari (WIB) dari ketiga satelit. Satu kebakaran bisa terdeteksi lebih dari sekali.
+              </p>
+              <GrafikTren hari={p.tren!.hari} nilai={trenTampil} judul={`Jumlah deteksi titik api per hari, ${p.namaProv ?? "Indonesia"}`} />
+            </>
+          )}
+
           <h2 className="mt-5 mb-2 text-sm font-bold">Titik api per provinsi</h2>
           {ringkasan.length === 0 ? (
             <p className="text-sm text-redup">{p.hotspot ? "Tidak ada titik api terdeteksi." : "Memuat…"}</p>
@@ -348,10 +422,13 @@ export default function Panel(p: Props) {
                 <li key={r.nama}>
                   <button
                     onClick={() => {
-                      p.peta?.terbangKeBbox(r.bbox);
+                      p.pilihProv(p.namaProv === r.nama ? null : r.nama);
                       tutupDiHp();
                     }}
-                    className="group relative flex min-h-10 w-full items-center justify-between overflow-hidden rounded-xl px-3 text-left text-sm active:scale-[0.99]"
+                    aria-pressed={p.namaProv === r.nama}
+                    className={`group relative flex min-h-10 w-full items-center justify-between overflow-hidden rounded-xl px-3 text-left text-sm active:scale-[0.99] ${
+                      p.namaProv === r.nama ? "ring-2 ring-[var(--accent)]" : ""
+                    }`}
                   >
                     <span className="absolute inset-y-0 left-0 rounded-xl bg-aksen-lembut" style={{ width: `${(r.jumlah / maksProvinsi) * 100}%` }} />
                     <span className="relative font-medium">{r.nama}</span>
@@ -444,7 +521,7 @@ export default function Panel(p: Props) {
             </p>
             <p>
               Citra: NASA GIBS/Worldview. Kualitas udara & angin: Open-Meteo (model CAMS, CC BY 4.0)
-              {p.aqi?.aktif && <> dan World Air Quality Index Project beserta EPA asal</>}. Peta dasar: OpenFreeMap, © OpenStreetMap.
+              {p.aqi?.aktif && <> dan World Air Quality Index Project beserta EPA asal</>}. Peta dasar: OpenFreeMap. Peta dasar dan batas provinsi: © OpenStreetMap contributors (ODbL).
             </p>
             <p>
               Rujukan resmi:{" "}

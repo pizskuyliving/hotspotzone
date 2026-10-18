@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { kategoriAqi } from "./aqi";
 import { tanggalCitraDefault, urlWms, LAYER_CITRA } from "./gibs";
-import { cariProvinsi, ringkasProvinsi } from "./provinsi";
+import { cariProvinsi, indeksProvinsi, NAMA_PROVINSI, ringkasProvinsi } from "./provinsi";
 
 describe("kategoriAqi", () => {
   it("mengikuti batas US AQI", () => {
@@ -18,24 +18,30 @@ describe("kategoriAqi", () => {
 describe("cariProvinsi", () => {
   it("menemukan provinsi untuk kota-kota rawan karhutla", () => {
     expect(cariProvinsi(113.92, -2.21)).toBe("Kalimantan Tengah"); // Palangka Raya
-    expect(cariProvinsi(101.45, 0.51)).toBe("Riau & Kep. Riau"); // Pekanbaru
+    expect(cariProvinsi(101.45, 0.51)).toBe("Riau"); // Pekanbaru
     expect(cariProvinsi(104.76, -2.99)).toBe("Sumatera Selatan"); // Palembang
     expect(cariProvinsi(109.33, -0.03)).toBe("Kalimantan Barat"); // Pontianak
   });
 
   it("titik di laut lepas tidak masuk provinsi mana pun", () => {
     expect(cariProvinsi(90, -20)).toBeNull();
+    expect(indeksProvinsi(90, -20)).toBe(-1);
+  });
+
+  it("indeks merujuk ke nama yang sama", () => {
+    expect(NAMA_PROVINSI[indeksProvinsi(113.92, -2.21)]).toBe("Kalimantan Tengah");
   });
 
   it("ringkasan diurutkan dari jumlah terbanyak", () => {
     const r = ringkasProvinsi([
-      { lon: 101.45, lat: 0.51, yakin: false },
-      { lon: 113.92, lat: -2.21, yakin: true },
-      { lon: 113.9, lat: -2.2, yakin: false },
+      { prov: indeksProvinsi(101.45, 0.51), yakin: false },
+      { prov: indeksProvinsi(113.92, -2.21), yakin: true },
+      { prov: indeksProvinsi(113.9, -2.2), yakin: false },
+      { prov: -1, yakin: true }, // di luar provinsi: tidak dihitung
     ]);
     expect(r.map((p) => [p.nama, p.jumlah, p.tinggi])).toEqual([
       ["Kalimantan Tengah", 2, 1],
-      ["Riau & Kep. Riau", 1, 0],
+      ["Riau", 1, 0],
     ]);
   });
 });

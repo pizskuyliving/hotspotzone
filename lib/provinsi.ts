@@ -1,8 +1,8 @@
 import data from "@/data/provinsi.json";
 import type { RingkasanProvinsi } from "./tipe";
 
-// Batas provinsi BAKOSURTANAL (versi sederhana, 32 wilayah lama).
-// Provinsi pemekaran digabung ke induknya, lihat README.
+// Batas 38 provinsi, turunan OpenStreetMap (ODbL, © OpenStreetMap contributors),
+// disederhanakan; dibuat dengan scripts/buat-provinsi.mjs. Hanya dipakai di server.
 type Poligon = number[][][]; // [cincin][titik][x,y]
 type Provinsi = { nama: string; bbox: [number, number, number, number]; poligon: Poligon[] };
 
@@ -24,49 +24,87 @@ function dalamPoligon(x: number, y: number, poligon: Poligon) {
   return true;
 }
 
-// Titik di pesisir yang lolos dari poligon sederhana diberikan ke provinsi
-// dengan kotak batas terdekat (dalam jarak ~0,3 derajat).
-export function cariProvinsi(lon: number, lat: number): string | null {
-  for (const p of PROVINSI) {
-    const [x1, y1, x2, y2] = p.bbox;
-    if (lon < x1 || lon > x2 || lat < y1 || lat > y2) continue;
-    if (p.poligon.some((pg) => dalamPoligon(lon, lat, pg))) return p.nama;
+// Nama unik, urutannya tetap; TitikApi menyimpan indeks ke daftar ini.
+export const NAMA_PROVINSI = [...new Set(PROVINSI.map((p) => p.nama))];
+const INDEKS = new Map(NAMA_PROVINSI.map((n, i) => [n, i]));
+
+// Kotak batas gabungan per nama provinsi (satu provinsi bisa punya beberapa entri).
+const BBOX = new Map<string, [number, number, number, number]>();
+for (const p of PROVINSI) {
+  const b = BBOX.get(p.nama);
+  BBOX.set(p.nama, b ? [Math.min(b[0], p.bbox[0]), Math.min(b[1], p.bbox[1]), Math.max(b[2], p.bbox[2]), Math.max(b[3], p.bbox[3])] : p.bbox);
+}
+
+// Indeks grid agar tiap titik hanya diuji terhadap poligon/titik sudut di
+// sekitarnya. Tren 7 hari bisa >200 ribu titik; tanpa grid rute itu >60 detik.
+const SEL = 1; // derajat, untuk poligon
+// Titik di pesisir yang lolos dari poligon sederhana (~1 km) diberikan ke provinsi
+// dengan titik sudut terdekat dalam jarak ini. Sengaja kecil: lebih besar akan
+// menarik titik api di negara tetangga (Malaysia, Papua Nugini, Timor Leste).
+const TOLERANSI = 0.1; // derajat, ~11 km
+
+const kunci = (i: number, j: number) => i * 1000 + j;
+const gridPoligon = new Map<number, { prov: number; pg: Poligon; bbox: number[] }[]>();
+const gridSudut = new Map<number, [number, number, number][]>(); // [x, y, prov]
+for (const p of PROVINSI) {
+  const prov = INDEKS.get(p.nama)!;
+  for (const pg of p.poligon) {
+    let [x1, y1, x2, y2] = [Infinity, Infinity, -Infinity, -Infinity];
+    for (const [x, y] of pg[0]) {
+      [x1, y1, x2, y2] = [Math.min(x1, x), Math.min(y1, y), Math.max(x2, x), Math.max(y2, y)];
+      const k = kunci(Math.floor(x / TOLERANSI), Math.floor(y / TOLERANSI));
+      const isi = gridSudut.get(k);
+      if (isi) isi.push([x, y, prov]);
+      else gridSudut.set(k, [[x, y, prov]]);
+    }
+    const entri = { prov, pg, bbox: [x1, y1, x2, y2] };
+    for (let i = Math.floor(x1 / SEL); i <= Math.floor(x2 / SEL); i++)
+      for (let j = Math.floor(y1 / SEL); j <= Math.floor(y2 / SEL); j++) {
+        const isi = gridPoligon.get(kunci(i, j));
+        if (isi) isi.push(entri);
+        else gridPoligon.set(kunci(i, j), [entri]);
+      }
   }
-  let terdekat: string | null = null;
-  let jarak = 0.3;
-  for (const p of PROVINSI) {
-    for (const pg of p.poligon) {
-      for (const [x, y] of pg[0]) {
+}
+
+// -1 berarti di luar Indonesia (negara tetangga atau laut lepas).
+export function indeksProvinsi(lon: number, lat: number): number {
+  for (const { prov, pg, bbox } of gridPoligon.get(kunci(Math.floor(lon / SEL), Math.floor(lat / SEL))) ?? []) {
+    if (lon < bbox[0] || lon > bbox[2] || lat < bbox[1] || lat > bbox[3]) continue;
+    if (dalamPoligon(lon, lat, pg)) return prov;
+  }
+  let terdekat = -1;
+  let jarak = TOLERANSI;
+  const [ci, cj] = [Math.floor(lon / TOLERANSI), Math.floor(lat / TOLERANSI)];
+  for (let i = ci - 1; i <= ci + 1; i++)
+    for (let j = cj - 1; j <= cj + 1; j++)
+      for (const [x, y, prov] of gridSudut.get(kunci(i, j)) ?? []) {
         const d = Math.hypot(x - lon, y - lat);
         if (d < jarak) {
           jarak = d;
-          terdekat = p.nama;
+          terdekat = prov;
         }
       }
-    }
-  }
   return terdekat;
 }
 
-export function ringkasProvinsi(titik: { lon: number; lat: number; yakin: boolean }[]): RingkasanProvinsi[] {
-  const hitung = new Map<string, { jumlah: number; tinggi: number }>();
+export function cariProvinsi(lon: number, lat: number): string | null {
+  const i = indeksProvinsi(lon, lat);
+  return i < 0 ? null : NAMA_PROVINSI[i];
+}
+
+export function ringkasProvinsi(titik: { prov: number; yakin: boolean }[]): RingkasanProvinsi[] {
+  const hitung = new Map<number, { jumlah: number; tinggi: number }>();
   for (const t of titik) {
-    const nama = cariProvinsi(t.lon, t.lat);
-    if (!nama) continue;
-    const h = hitung.get(nama) ?? { jumlah: 0, tinggi: 0 };
+    if (t.prov < 0) continue;
+    const h = hitung.get(t.prov) ?? { jumlah: 0, tinggi: 0 };
     h.jumlah++;
     if (t.yakin) h.tinggi++;
-    hitung.set(nama, h);
-  }
-  const bbox = new Map<string, [number, number, number, number]>();
-  for (const p of PROVINSI) {
-    const b = bbox.get(p.nama);
-    bbox.set(
-      p.nama,
-      b ? [Math.min(b[0], p.bbox[0]), Math.min(b[1], p.bbox[1]), Math.max(b[2], p.bbox[2]), Math.max(b[3], p.bbox[3])] : p.bbox,
-    );
+    hitung.set(t.prov, h);
   }
   return [...hitung.entries()]
-    .map(([nama, h]) => ({ nama, ...h, bbox: bbox.get(nama)! }))
+    .map(([i, h]) => ({ nama: NAMA_PROVINSI[i], ...h, bbox: BBOX.get(NAMA_PROVINSI[i])! }))
     .sort((a, b) => b.jumlah - a.jumlah);
 }
+
+export const DAFTAR_PROVINSI = NAMA_PROVINSI.map((nama) => ({ nama, bbox: BBOX.get(nama)! }));

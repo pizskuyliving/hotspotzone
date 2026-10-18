@@ -12,6 +12,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@vercel/analytics": "^2.0.1",
     "maplibre-gl": "^6.14.0",
     "next": "^16.4.2",
     "react": "^19.3.1",

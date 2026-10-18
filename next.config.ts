@@ -14,7 +14,11 @@ const HEADER_KEAMANAN = [
 const nextConfig: NextConfig = {
   poweredByHeader: false,
   async headers() {
-    return [{ source: "/:path*", headers: HEADER_KEAMANAN }];
+    return [
+      { source: "/:path*", headers: HEADER_KEAMANAN },
+      // Service worker harus selalu dicek ulang agar versi baru cepat terpasang.
+      { source: "/sw.js", headers: [{ key: "Cache-Control", value: "no-cache" }] },
+    ];
   },
 };
 

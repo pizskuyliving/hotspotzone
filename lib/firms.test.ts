@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { ambilHotspot, uraiCsv } from "./firms";
+import { ambilHotspot, hitungTren, potonganRentang, uraiCsv } from "./firms";
+import type { TitikApi } from "./tipe";
 
 const KEPALA = "latitude,longitude,bright_ti4,scan,track,acq_date,acq_time,satellite,instrument,confidence,version,bright_ti5,frp,daynight";
 const baris = (lat: number, lon: number, tgl: string, jam: string, conf: string, frp: string, dn: string) =>
@@ -8,7 +9,7 @@ const baris = (lat: number, lon: number, tgl: string, jam: string, conf: string,
 describe("uraiCsv", () => {
   it("mengubah baris CSV FIRMS menjadi tuple ringkas", () => {
     const csv = [KEPALA, baris(-2.123456, 113.987654, "2026-10-18", "542", "h", "12.34", "N")].join("\n");
-    expect(uraiCsv(csv, 1)).toEqual([[113.9877, -2.1235, 12.3, 2, Date.parse("2026-10-18T05:42:00Z") / 60000, 1, 1]]);
+    expect(uraiCsv(csv, 1)).toEqual([[113.9877, -2.1235, 12.3, 2, Date.parse("2026-10-18T05:42:00Z") / 60000, 1, 1, -1]]);
   });
 
   it("memetakan keyakinan huruf VIIRS dan angka MODIS", () => {
@@ -80,5 +81,41 @@ describe("ambilHotspot", () => {
     const data = await ambilHotspot(1);
     expect(data.gagal).toEqual(["VIIRS_NOAA21_NRT"]);
     expect(data.sumber).toHaveLength(2);
+  });
+});
+
+describe("hitungTren", () => {
+  const menit = (iso: string) => Date.parse(iso) / 60000;
+  const titik = (iso: string, prov: number): TitikApi => [113, -2, 5, 1, menit(iso), 0, 0, prov];
+
+  it("mengelompokkan per tanggal WIB, 7 hari terakhir termasuk hari ini", () => {
+    const kini = Date.parse("2026-10-18T13:40:00Z"); // 18 Okt 20.40 WIB
+    const r = hitungTren(
+      [
+        titik("2026-10-18T05:00:00Z", 0), // 18 Okt
+        titik("2026-10-17T18:30:00Z", 0), // 18 Okt 01.30 WIB, bukan 17 Okt
+        titik("2026-10-17T16:00:00Z", 1), // 17 Okt 23.00 WIB
+        titik("2026-10-12T05:00:00Z", 1), // 12 Okt: hari pertama
+        titik("2026-10-11T05:00:00Z", 1), // 11 Okt: di luar 7 hari
+        titik("2026-10-18T05:00:00Z", -1), // di luar Indonesia: tidak dihitung
+      ],
+      kini,
+    );
+    expect(r.hari).toEqual(["2026-10-12", "2026-10-13", "2026-10-14", "2026-10-15", "2026-10-16", "2026-10-17", "2026-10-18"]);
+    expect(r.nasional).toEqual([1, 0, 0, 0, 0, 1, 2]);
+    expect(Object.values(r.provinsi).map((b) => b.reduce((a, x) => a + x, 0)).sort()).toEqual([2, 2]);
+  });
+});
+
+describe("potonganRentang", () => {
+  it("rentang pendek: satu permintaan hari terbaru", () => {
+    expect(potonganRentang(4)).toEqual([[4, null]]);
+  });
+
+  it("8 hari dipecah 5 + 3, berakhir hari ini (UTC)", () => {
+    expect(potonganRentang(8, Date.parse("2026-10-18T13:40:00Z"))).toEqual([
+      [5, "2026-10-11"],
+      [3, "2026-10-16"],
+    ]);
   });
 });
