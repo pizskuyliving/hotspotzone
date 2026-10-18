@@ -1,0 +1,118 @@
+@import "tailwindcss";
+
+:root {
+  --bg: #f4f2ee;
+  --panel: rgba(255, 255, 255, 0.97);
+  --panel-solid: #ffffff;
+  --text: #1c1b19;
+  --muted: #6b6760;
+  --border: rgba(28, 27, 25, 0.12);
+  --chip: #efece6;
+  --accent: #e8531f;
+  --accent-soft: rgba(232, 83, 31, 0.12);
+  --shadow: 0 10px 30px rgba(20, 16, 10, 0.18);
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #121212;
+    --panel: rgba(24, 24, 26, 0.97);
+    --panel-solid: #18181a;
+    --text: #f1efea;
+    --muted: #a19d95;
+    --border: rgba(255, 255, 255, 0.1);
+    --chip: #26262a;
+    --accent: #ff6a33;
+    --accent-soft: rgba(255, 106, 51, 0.16);
+    --shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    color-scheme: dark;
+  }
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-panel: var(--panel);
+  --color-panel-solid: var(--panel-solid);
+  --color-teks: var(--text);
+  --color-redup: var(--muted);
+  --color-garis: var(--border);
+  --color-chip: var(--chip);
+  --color-aksen: var(--accent);
+  --color-aksen-lembut: var(--accent-soft);
+  --font-sans: var(--font-utama), system-ui, sans-serif;
+}
+
+html,
+body {
+  height: 100%;
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  overscroll-behavior: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  font-family: var(--font-sans);
+}
+
+.bayangan {
+  box-shadow: var(--shadow);
+}
+
+.kaca {
+  background: var(--panel);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+
+/* Popup MapLibre menyesuaikan tema */
+.maplibregl-popup-content {
+  background: var(--panel-solid) !important;
+  color: var(--text);
+  border-radius: 14px !important;
+  padding: 12px 14px !important;
+  box-shadow: var(--shadow) !important;
+  font-family: var(--font-sans);
+  max-width: min(280px, 80vw);
+}
+.maplibregl-popup-tip {
+  border-top-color: var(--panel-solid) !important;
+  border-bottom-color: var(--panel-solid) !important;
+}
+.maplibregl-popup-close-button {
+  font-size: 20px;
+  width: 32px;
+  height: 32px;
+  color: var(--muted);
+}
+.maplibregl-ctrl-attrib {
+  font-size: 10px;
+}
+.maplibregl-ctrl-group {
+  border-radius: 12px !important;
+  overflow: hidden;
+}
+.maplibregl-ctrl-group button {
+  width: 40px !important;
+  height: 40px !important;
+}
+
+/* Di HP kontrol peta diletakkan di bawah bilah atas */
+@media (max-width: 767px) {
+  .maplibregl-ctrl-top-right {
+    top: calc(max(12px, env(safe-area-inset-top)) + 64px);
+    right: 2px;
+  }
+  .maplibregl-ctrl-bottom-right {
+    bottom: calc(236px + env(safe-area-inset-bottom));
+  }
+}
+
+.tanpa-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.tanpa-scrollbar {
+  scrollbar-width: none;
+}
