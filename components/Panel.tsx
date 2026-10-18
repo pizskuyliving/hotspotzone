@@ -80,7 +80,7 @@ function StatusLangsung({ dicek, sekarang, memuat, onMuat }: { dicek: Date | nul
         <span className="absolute inline-flex size-full animate-ping rounded-full bg-emerald-500 opacity-60" />
         <span className="relative inline-flex size-2 rounded-full bg-emerald-500" />
       </span>
-      <span>{memuat ? "Memuat…" : <><span className="hidden min-[400px]:max-md:inline">Pantau langsung · </span><span className="min-[400px]:max-md:hidden">Live · </span>{relatif(dicek, sekarang)}</>}</span>
+      <span>{memuat ? "Memuat…" : <><span className="hidden min-[400px]:max-md:inline">Pantau otomatis · </span><span className="min-[400px]:max-md:hidden">Dicek </span>{relatif(dicek, sekarang)}</>}</span>
       <span aria-hidden className={memuat ? "animate-spin" : ""}>↻</span>
     </button>
   );

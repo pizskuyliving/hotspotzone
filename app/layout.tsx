@@ -2,14 +2,19 @@ import type { Metadata, Viewport } from "next";
 import { Plus_Jakarta_Sans } from "next/font/google";
 import "maplibre-gl/dist/maplibre-gl.css";
 import "./globals.css";
+import { DESKRIPSI_SITUS, JUDUL_SITUS, NAMA_SITUS, URL_SITUS } from "@/lib/situs";
 
 const font = Plus_Jakarta_Sans({ subsets: ["latin"], variable: "--font-utama", display: "swap" });
 
 export const metadata: Metadata = {
-  title: "hotspotzone.id · Titik Api, Asap & Kualitas Udara Indonesia",
-  description:
-    "Peta titik api (hotspot) dari satelit NASA, sebaran asap, dan indeks kualitas udara (AQI) di seluruh Indonesia, diperbarui otomatis.",
-  applicationName: "hotspotzone.id",
+  metadataBase: new URL(URL_SITUS),
+  title: JUDUL_SITUS,
+  description: DESKRIPSI_SITUS,
+  applicationName: NAMA_SITUS,
+  keywords: ["titik api", "hotspot", "karhutla", "kebakaran hutan", "kabut asap", "kualitas udara", "AQI", "Indonesia"],
+  alternates: { canonical: "/" },
+  openGraph: { type: "website", locale: "id_ID", url: "/", siteName: NAMA_SITUS, title: JUDUL_SITUS, description: DESKRIPSI_SITUS },
+  twitter: { card: "summary_large_image", title: JUDUL_SITUS, description: DESKRIPSI_SITUS },
 };
 
 export const viewport: Viewport = {

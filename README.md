@@ -22,6 +22,8 @@ npm run dev
 
 Buka http://localhost:3000. Tanpa `FIRMS_MAP_KEY`, situs tetap jalan dengan data contoh (ada tanda "Mode contoh").
 
+Pemeriksaan: `npm run lint` (tipe), `npm test` (tes unit), `npm run build`. Ketiganya juga dijalankan GitHub Actions di setiap push.
+
 ## Key yang dibutuhkan
 
 | Variabel | Wajib? | Daftar di |
@@ -50,6 +52,9 @@ components/Peta.tsx               Peta MapLibre + layer GIBS
 components/Panel.tsx              Panel desktop / bottom sheet HP
 lib/                              Pengambil data, kategori AQI, kota, provinsi
 data/provinsi.json                Batas provinsi (BAKOSURTANAL, versi sederhana)
+lib/situs.ts                      Nama, deskripsi, dan URL situs (SEO, robots, sitemap)
+app/opengraph-image.tsx           Gambar pratinjau saat link dibagikan
+lib/*.test.ts                     Tes unit (Vitest)
 scripts/salin-worker.mjs          Menyalin worker MapLibre ke public/ saat dev/build
 ```
 
