@@ -56,15 +56,20 @@ export async function ambilHotspot(hari: number): Promise<ResponsHotspot> {
   const kunci = process.env.FIRMS_MAP_KEY;
   if (!kunci) return contohHotspot(hari);
 
+  // DAY_RANGE FIRMS dihitung per tanggal UTC (range 1 = sejak 00.00 UTC hari
+  // ini), bukan 24 jam bergulir. Ambil sehari lebih banyak lalu saring, agar
+  // lintasan malam kemarin ikut dan mode 24 jam tidak kosong tiap pagi.
+  const batas = Date.now() / 60000 - hari * 1440;
+
   const hasil = await Promise.allSettled(
     SUMBER_FIRMS.map(async (sumber, n) => {
       // no-store: hasilnya sudah di-cache oleh ISR rute. Data Cache Next.js
       // juga menolak CSV >2 MB dan mencetak URL (berisi key) ke log.
-      const url = `https://firms.modaps.eosdis.nasa.gov/api/area/csv/${kunci}/${sumber}/${BBOX_INDONESIA}/${hari}`;
+      const url = `https://firms.modaps.eosdis.nasa.gov/api/area/csv/${kunci}/${sumber}/${BBOX_INDONESIA}/${hari + 1}`;
       const res = await fetch(url, { cache: "no-store" });
       const teks = await res.text();
       if (!res.ok || !teks.startsWith("latitude")) throw new Error(`${sumber}: ${res.status} ${teks.slice(0, 120)}`);
-      return uraiCsv(teks, n);
+      return uraiCsv(teks, n).filter((t) => t[4] >= batas);
     }),
   );
 
