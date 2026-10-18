@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { KEYAKINAN, waktuTitik, type ResponsAqi, type ResponsHotspot, type ResponsTren, type ResponsUdara, type TitikApi } from "@/lib/tipe";
 import { KATEGORI_AQI, kategoriAqi } from "@/lib/aqi";
-import { LAYER_CITRA } from "@/lib/gibs";
+import { LAYER_CITRA, tanggalLayer } from "@/lib/gibs";
 import type { Filter, Lapisan } from "./Aplikasi";
 import type { PetaHandle } from "./Peta";
 import GrafikTren from "./GrafikTren";
@@ -397,6 +397,7 @@ export default function Panel(p: Props) {
               {LAYER_CITRA.filter((l) => p.lapisan[l.id as keyof Lapisan]).map((l) => (
                 <p key={l.id} className="mt-2 text-xs text-redup">
                   <b className="text-teks">{l.label}.</b> {l.keterangan}
+                  {tanggalLayer(l, p.tanggal) !== p.tanggal && ` Memakai data ${tanggalLayer(l, p.tanggal)}, data tanggal terpilih belum tersedia.`}
                 </p>
               ))}
               <p className="mt-2 text-xs text-redup">Area kosong berarti satelit belum melintas atau tertutup awan.</p>

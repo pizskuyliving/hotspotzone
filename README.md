@@ -60,6 +60,8 @@ components/Panel.tsx              Panel desktop / bottom sheet HP
 lib/                              Pengambil data, kategori AQI, kota, provinsi
 data/provinsi.json                Batas 38 provinsi (turunan OpenStreetMap, disederhanakan)
 scripts/buat-provinsi.mjs         Membuat ulang data/provinsi.json dari GeoJSON OSM
+data/tetangga.json                Daratan negara tetangga (Natural Earth, domain publik)
+scripts/buat-tetangga.mjs         Membuat ulang data/tetangga.json
 lib/situs.ts                      Nama, deskripsi, dan URL situs (SEO, robots, sitemap)
 app/opengraph-image.tsx           Gambar pratinjau saat link dibagikan
 lib/*.test.ts                     Tes unit (Vitest)

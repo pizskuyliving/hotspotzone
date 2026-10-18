@@ -1,4 +1,5 @@
 import data from "@/data/provinsi.json";
+import dataTetangga from "@/data/tetangga.json";
 import type { RingkasanProvinsi } from "./tipe";
 
 // Batas 38 provinsi, turunan OpenStreetMap (ODbL, © OpenStreetMap contributors),
@@ -7,6 +8,8 @@ type Poligon = number[][][]; // [cincin][titik][x,y]
 type Provinsi = { nama: string; bbox: [number, number, number, number]; poligon: Poligon[] };
 
 const PROVINSI = data as unknown as Provinsi[];
+// Daratan negara tetangga (Natural Earth, domain publik); scripts/buat-tetangga.mjs.
+const TETANGGA = dataTetangga as unknown as Provinsi[];
 
 function dalamCincin(x: number, y: number, cincin: number[][]) {
   let dalam = false;
@@ -39,8 +42,8 @@ for (const p of PROVINSI) {
 // sekitarnya. Tren 7 hari bisa >200 ribu titik; tanpa grid rute itu >60 detik.
 const SEL = 1; // derajat, untuk poligon
 // Titik di pesisir yang lolos dari poligon sederhana (~1 km) diberikan ke provinsi
-// dengan titik sudut terdekat dalam jarak ini. Sengaja kecil: lebih besar akan
-// menarik titik api di negara tetangga (Malaysia, Papua Nugini, Timor Leste).
+// dengan titik sudut terdekat dalam jarak ini, kecuali titik itu berada di
+// daratan negara tetangga (perbatasan darat Papua Nugini, Timor Leste, Malaysia).
 const TOLERANSI = 0.1; // derajat, ~11 km
 
 const kunci = (i: number, j: number) => i * 1000 + j;
@@ -67,12 +70,16 @@ for (const p of PROVINSI) {
   }
 }
 
+const diTetangga = (lon: number, lat: number) =>
+  TETANGGA.some(({ bbox, poligon }) => lon >= bbox[0] && lon <= bbox[2] && lat >= bbox[1] && lat <= bbox[3] && dalamPoligon(lon, lat, poligon[0]));
+
 // -1 berarti di luar Indonesia (negara tetangga atau laut lepas).
 export function indeksProvinsi(lon: number, lat: number): number {
   for (const { prov, pg, bbox } of gridPoligon.get(kunci(Math.floor(lon / SEL), Math.floor(lat / SEL))) ?? []) {
     if (lon < bbox[0] || lon > bbox[2] || lat < bbox[1] || lat > bbox[3]) continue;
     if (dalamPoligon(lon, lat, pg)) return prov;
   }
+  if (diTetangga(lon, lat)) return -1;
   let terdekat = -1;
   let jarak = TOLERANSI;
   const [ci, cj] = [Math.floor(lon / TOLERANSI), Math.floor(lat / TOLERANSI)];

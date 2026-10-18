@@ -9,6 +9,8 @@ export type LayerCitra = {
   layer: string;
   format: "image/jpeg" | "image/png";
   opasitas: number;
+  // Berapa hari data layer ini tertinggal (UTC). MODIS MAIAC baru lengkap ~H+1.
+  jedaHari: number;
 };
 
 export const LAYER_CITRA: LayerCitra[] = [
@@ -19,6 +21,7 @@ export const LAYER_CITRA: LayerCitra[] = [
     layer: "VIIRS_NOAA20_CorrectedReflectance_TrueColor",
     format: "image/jpeg",
     opasitas: 1,
+    jedaHari: 0,
   },
   {
     id: "aod",
@@ -27,8 +30,18 @@ export const LAYER_CITRA: LayerCitra[] = [
     layer: "MODIS_Combined_MAIAC_L2G_AerosolOpticalDepth",
     format: "image/png",
     opasitas: 0.75,
+    jedaHari: 1,
   },
 ];
+
+// Tanggal yang benar-benar dipakai: tanggal terpilih, atau tanggal terbaru yang
+// sudah tersedia bila layer ini tertinggal (agar peta asap tidak kosong).
+export function tanggalLayer(l: LayerCitra, tanggal: string, sekarang = new Date()) {
+  const d = new Date(sekarang);
+  d.setUTCDate(d.getUTCDate() - l.jedaHari);
+  const batas = d.toISOString().slice(0, 10);
+  return tanggal > batas ? batas : tanggal;
+}
 
 export function urlWms(l: LayerCitra, tanggal: string) {
   const q = new URLSearchParams({
@@ -42,7 +55,7 @@ export function urlWms(l: LayerCitra, tanggal: string) {
     CRS: "EPSG:3857",
     WIDTH: "256",
     HEIGHT: "256",
-    TIME: tanggal,
+    TIME: tanggalLayer(l, tanggal),
   });
   // {bbox-epsg-3857} tidak boleh di-encode.
   return `${WMS}?${q.toString()}&BBOX={bbox-epsg-3857}`;

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { kategoriAqi } from "./aqi";
-import { tanggalCitraDefault, urlWms, LAYER_CITRA } from "./gibs";
+import { tanggalCitraDefault, tanggalLayer, urlWms, LAYER_CITRA } from "./gibs";
 import { cariProvinsi, indeksProvinsi, NAMA_PROVINSI, ringkasProvinsi } from "./provinsi";
 
 describe("kategoriAqi", () => {
@@ -28,6 +28,12 @@ describe("cariProvinsi", () => {
     expect(indeksProvinsi(90, -20)).toBe(-1);
   });
 
+  it("titik di seberang perbatasan darat tidak ditarik ke Indonesia", () => {
+    expect(cariProvinsi(124.251, -9.31)).toBeNull(); // Oecusse, Timor Leste
+    expect(cariProvinsi(141.236, -7.905)).toBeNull(); // Western Province, Papua Nugini
+    expect(cariProvinsi(140.714, -7.175)).toBe("Papua Selatan"); // dekat perbatasan, sisi Indonesia
+  });
+
   it("indeks merujuk ke nama yang sama", () => {
     expect(NAMA_PROVINSI[indeksProvinsi(113.92, -2.21)]).toBe("Kalimantan Tengah");
   });
@@ -50,6 +56,14 @@ describe("gibs", () => {
   it("sebelum 09.00 UTC memakai citra kemarin", () => {
     expect(tanggalCitraDefault(new Date("2026-10-18T08:59:00Z"))).toBe("2026-10-17");
     expect(tanggalCitraDefault(new Date("2026-10-18T09:00:00Z"))).toBe("2026-10-18");
+  });
+
+  it("peta asap memakai tanggal terbaru yang sudah tersedia", () => {
+    const aod = LAYER_CITRA.find((l) => l.id === "aod")!;
+    const kini = new Date("2026-10-18T13:00:00Z");
+    expect(tanggalLayer(aod, "2026-10-18", kini)).toBe("2026-10-17");
+    expect(tanggalLayer(aod, "2026-10-15", kini)).toBe("2026-10-15");
+    expect(tanggalLayer(LAYER_CITRA[0], "2026-10-18", kini)).toBe("2026-10-18");
   });
 
   it("placeholder bbox MapLibre tidak di-encode", () => {
