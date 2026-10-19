@@ -70,8 +70,22 @@ for (const p of PROVINSI) {
   }
 }
 
-const diTetangga = (lon: number, lat: number) =>
-  TETANGGA.some(({ bbox, poligon }) => lon >= bbox[0] && lon <= bbox[2] && lat >= bbox[1] && lat <= bbox[3] && dalamPoligon(lon, lat, poligon[0]));
+// Nama negara tetangga di titik ini, atau null. Dengan toleransi (derajat), titik di
+// pesisir/pulau kecil yang lolos dari garis pantai 1:50m diberi negara dengan
+// titik sudut terdekat. Titik api memakai 0: lebih longgar akan menarik titik
+// di Kepri/Kaltara yang dekat perbatasan.
+export function negaraTetangga(lon: number, lat: number, toleransi = 0): string | null {
+  const di = TETANGGA.find(({ bbox, poligon }) => lon >= bbox[0] && lon <= bbox[2] && lat >= bbox[1] && lat <= bbox[3] && dalamPoligon(lon, lat, poligon[0]));
+  if (di || !toleransi) return di?.nama ?? null;
+  let nama: string | null = null;
+  let jarak = toleransi;
+  for (const t of TETANGGA)
+    for (const [x, y] of t.poligon[0][0]) {
+      const d = Math.hypot(x - lon, y - lat);
+      if (d < jarak) [jarak, nama] = [d, t.nama];
+    }
+  return nama;
+}
 
 // -1 berarti di luar Indonesia (negara tetangga atau laut lepas).
 export function indeksProvinsi(lon: number, lat: number): number {
@@ -79,7 +93,7 @@ export function indeksProvinsi(lon: number, lat: number): number {
     if (lon < bbox[0] || lon > bbox[2] || lat < bbox[1] || lat > bbox[3]) continue;
     if (dalamPoligon(lon, lat, pg)) return prov;
   }
-  if (diTetangga(lon, lat)) return -1;
+  if (negaraTetangga(lon, lat)) return -1;
   let terdekat = -1;
   let jarak = TOLERANSI;
   const [ci, cj] = [Math.floor(lon / TOLERANSI), Math.floor(lat / TOLERANSI)];

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { LAPISAN_BAWAAN, bacaTautan, slug, tulisTautan } from "./tautan";
-import { formatJam, teksDiukur, zonaWaktu } from "./zona";
+import { formatJam, teksDiukur, zonaStasiun, zonaWaktu } from "./zona";
 
 describe("tautan", () => {
   it("bawaan menghasilkan URL tanpa query", () => {
@@ -66,5 +66,23 @@ describe("teksDiukur (jam stasiun WAQI)", () => {
   it("waktu kosong atau rusak tidak ditampilkan", () => {
     expect(teksDiukur(null, "WIB", kini)).toBeNull();
     expect(teksDiukur("null", "WIB", kini)).toBeNull();
+  });
+});
+
+describe("zonaStasiun (stasiun WAQI)", () => {
+  const jam7utc = new Date("2026-10-19T07:00:00Z");
+
+  it("provinsi Indonesia dulu, lalu negara tetangga, lalu bujur", () => {
+    expect(zonaStasiun("Sulawesi Tenggara", null, 122.5)).toBe("WITA");
+    expect(zonaStasiun(null, "Singapura", 103.85)).toBe("Singapura");
+    expect(zonaStasiun(null, "Negara Asing", 105)).toBe("WIB");
+    expect(zonaStasiun(null, null, 135)).toBe("WIT");
+  });
+
+  it("stasiun luar negeri memakai jam negaranya", () => {
+    expect(formatJam(jam7utc, "Singapura")).toMatch(/15[.:]00 waktu Singapura$/);
+    expect(formatJam(jam7utc, "Thailand")).toMatch(/14[.:]00 waktu Thailand$/);
+    expect(formatJam(jam7utc, "Papua Nugini")).toMatch(/17[.:]00 waktu Papua Nugini$/);
+    expect(formatJam(jam7utc, "WIB")).toMatch(/14[.:]00 WIB$/);
   });
 });

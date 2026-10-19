@@ -1,14 +1,15 @@
 // Membuat data/tetangga.json: daratan negara tetangga di sekitar Indonesia.
 // Dipakai agar titik api di sisi seberang perbatasan darat (Papua Nugini,
 // Timor Leste, Malaysia) tidak ikut ditarik ke provinsi Indonesia oleh
-// toleransi pesisir di lib/provinsi.ts.
+// toleransi pesisir di lib/provinsi.ts. Juga menentukan jam negara untuk
+// stasiun WAQI di luar Indonesia (lib/zona.ts).
 //
 // Sumber: Natural Earth 1:50m admin 0 countries (domain publik),
 // https://github.com/nvkelso/natural-earth-vector, berkas ne_50m_admin_0_countries.geojson.
 //   node scripts/buat-tetangga.mjs ne_50m_admin_0_countries.geojson
 import { readFileSync, writeFileSync } from "node:fs";
 
-const NEGARA = { PNG: "Papua Nugini", TLS: "Timor Leste", MYS: "Malaysia", BRN: "Brunei", SGP: "Singapura", PHL: "Filipina" };
+const NEGARA = { PNG: "Papua Nugini", TLS: "Timor Leste", MYS: "Malaysia", BRN: "Brunei", SGP: "Singapura", PHL: "Filipina", THA: "Thailand" };
 const [B, S, T, U] = [94, -11.5, 141.5, 6.5]; // BBOX_INDONESIA dengan sedikit kelonggaran
 const LONGGAR = 0.5;
 

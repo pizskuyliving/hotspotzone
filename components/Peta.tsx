@@ -13,7 +13,7 @@ import {
   setWorkerUrl,
 } from "maplibre-gl";
 import { KEYAKINAN, waktuTitik, type Bbox, type StasiunAqi, type SumberAqi, type TitikApi, type UdaraKota } from "@/lib/tipe";
-import { formatJam, teksDiukur, zonaWaktu, type Zona } from "@/lib/zona";
+import { formatJam, teksDiukur, zonaWaktu, type ZonaStasiun } from "@/lib/zona";
 import { EKSPRESI_WARNA_AQI, kategoriAqi } from "@/lib/aqi";
 import { LAYER_CITRA, urlWms } from "@/lib/gibs";
 import type { Lapisan } from "./Aplikasi";
@@ -179,7 +179,7 @@ function htmlStasiun(f: MapGeoJSONFeature, sumberAqi: Record<string, SumberAqi[]
   const p = f.properties as Record<string, unknown>;
   const k = kategoriAqi(Number(p.aqi));
   // Respons lama (cache offline) belum punya zona: perkiraan dari bujur.
-  const zona = (p.zona as Zona | undefined) ?? zonaWaktu(null, (f.geometry as GeoJSON.Point).coordinates[0]);
+  const zona = (p.zona as ZonaStasiun | undefined) ?? zonaWaktu(null, (f.geometry as GeoJSON.Point).coordinates[0]);
   const diukur = teksDiukur(p.waktu as string | null, zona);
   // URL sudah disaring http(s) di server (lib/waqi.ts); tetap di-escape untuk atribut.
   const sumber = (sumberAqi[String(p.uid)] ?? SUMBER_WAQI)

@@ -1,4 +1,4 @@
-import type { Zona } from "./zona";
+import type { ZonaStasiun } from "./zona";
 
 // Satu titik api dikirim ke browser sebagai tuple angka agar respons kecil
 // (data 72 jam di puncak musim karhutla bisa >60 ribu titik, sedangkan
@@ -56,7 +56,7 @@ export type StasiunAqi = {
   lon: number;
   aqi: number;
   waktu: string | null; // ISO dari WAQI, bisa "…Z" atau "…+09:00"
-  zona: Zona; // zona waktu lokasi stasiun, dari provinsinya
+  zona: ZonaStasiun; // zona waktu lokasi stasiun: provinsi, atau negara tetangga
 };
 
 export type ResponsAqi = {

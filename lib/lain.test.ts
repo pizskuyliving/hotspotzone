@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { GET as getUdara } from "@/app/api/udara/route";
 import { kategoriAqi } from "./aqi";
 import { tanggalCitraDefault, tanggalLayer, urlWms, LAYER_CITRA } from "./gibs";
-import { cariProvinsi, indeksProvinsi, NAMA_PROVINSI, ringkasProvinsi } from "./provinsi";
+import { cariProvinsi, indeksProvinsi, NAMA_PROVINSI, negaraTetangga, ringkasProvinsi } from "./provinsi";
 
 describe("kategoriAqi", () => {
   it("mengikuti batas US AQI", () => {
@@ -34,6 +34,17 @@ describe("cariProvinsi", () => {
     expect(cariProvinsi(124.251, -9.31)).toBeNull(); // Oecusse, Timor Leste
     expect(cariProvinsi(141.236, -7.905)).toBeNull(); // Western Province, Papua Nugini
     expect(cariProvinsi(140.714, -7.175)).toBe("Papua Selatan"); // dekat perbatasan, sisi Indonesia
+  });
+
+  it("negara tetangga untuk stasiun di luar Indonesia", () => {
+    expect(negaraTetangga(103.85, 1.29)).toBe("Singapura");
+    expect(negaraTetangga(110.35, 1.55)).toBe("Malaysia"); // Kuching
+    expect(negaraTetangga(101.82, 6.42)).toBe("Thailand"); // Narathiwat
+    expect(negaraTetangga(125.57, -8.56)).toBe("Timor Leste"); // Dili
+    expect(negaraTetangga(106.82, -6.2)).toBeNull(); // Jakarta
+    // Stasiun pesisir yang lolos dari garis pantai 1:50m: hanya ketemu dengan toleransi.
+    expect(negaraTetangga(101.87, 2.44, 0.2)).toBe("Malaysia"); // Port Dickson
+    expect(negaraTetangga(106.82, -6.2, 0.2)).toBeNull();
   });
 
   it("indeks merujuk ke nama yang sama", () => {
