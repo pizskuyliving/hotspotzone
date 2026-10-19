@@ -9,7 +9,7 @@ const baris = (lat: number, lon: number, tgl: string, jam: string, conf: string,
 describe("uraiCsv", () => {
   it("mengubah baris CSV FIRMS menjadi tuple ringkas", () => {
     const csv = [KEPALA, baris(-2.123456, 113.987654, "2026-10-18", "542", "h", "12.34", "N")].join("\n");
-    expect(uraiCsv(csv, 1)).toEqual([[113.9877, -2.1235, 12.3, 2, Date.parse("2026-10-18T05:42:00Z") / 60000, 1, 1, -1]]);
+    expect(uraiCsv(csv, 1)).toEqual([[113.988, -2.123, 12, 2, Date.parse("2026-10-18T05:42:00Z") / 60000, 1, 1, -1]]);
   });
 
   it("memetakan keyakinan huruf VIIRS dan angka MODIS", () => {
@@ -80,7 +80,7 @@ describe("ambilHotspot", () => {
     vi.spyOn(console, "error").mockImplementation(() => {});
     const data = await ambilHotspot(1);
     expect(data.gagal).toEqual(["VIIRS_NOAA21_NRT"]);
-    expect(data.sumber).toHaveLength(2);
+    expect(data.titik.length).toBeGreaterThan(0);
   });
 });
 

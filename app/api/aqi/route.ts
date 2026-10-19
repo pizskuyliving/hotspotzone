@@ -19,7 +19,7 @@ export async function GET() {
   try {
     const res = await fetch(
       `https://api.waqi.info/v2/map/bounds?latlng=${selatan},${barat},${utara},${timur}&networks=all&token=${encodeURIComponent(token)}`,
-      { cache: "no-store" },
+      { cache: "no-store", signal: AbortSignal.timeout(30_000) },
     );
     const json = (await res.json()) as { status: string; data: WaqiStasiun[] | string };
     if (json.status !== "ok" || !Array.isArray(json.data)) throw new Error(String(json.data));

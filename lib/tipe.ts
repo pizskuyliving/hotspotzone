@@ -23,9 +23,7 @@ export type RingkasanProvinsi = {
 
 export type ResponsHotspot = {
   demo: boolean;
-  hari: number;
   diperbarui: string;
-  sumber: string[];
   gagal: string[];
   satelit: string[]; // nama satelit, dirujuk oleh indeks di TitikApi
   provinsi: { nama: string; bbox: Bbox }[]; // dirujuk oleh indeks provinsi di TitikApi

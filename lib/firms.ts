@@ -40,9 +40,10 @@ export function uraiCsv(csv: string, satelit: number): TitikApi[] {
     const waktu = Date.parse(`${k[iTgl]}T${jam.slice(0, 2)}:${jam.slice(2)}:00Z`) / 60000;
     if (!Number.isFinite(waktu)) continue;
     hasil.push([
-      Math.round(lon * 1e4) / 1e4,
-      Math.round(lat * 1e4) / 1e4,
-      Math.round((Number(k[iFrp]) || 0) * 10) / 10,
+      // 3 desimal (~110 m) cukup untuk piksel VIIRS 375 m; menjaga data 72 jam di bawah batas 4,5 MB.
+      Math.round(lon * 1e3) / 1e3,
+      Math.round(lat * 1e3) / 1e3,
+      Math.round(Number(k[iFrp]) || 0), // MW bulat: desimal tidak berguna di popup, menghemat ukuran data
       keyakinan(k[iConf] ?? ""),
       waktu,
       satelit,
@@ -88,7 +89,7 @@ async function ambilSemuaSatelit(kunci: string, rentangHari: number, sejak: numb
         // no-store: hasilnya sudah di-cache oleh ISR rute. Data Cache Next.js
         // juga menolak CSV >2 MB dan mencetak URL (berisi key) ke log.
         const url = `https://firms.modaps.eosdis.nasa.gov/api/area/csv/${kunci}/${sumber}/${BBOX_INDONESIA}/${rentang}${tanggal ? `/${tanggal}` : ""}`;
-        const res = await fetch(url, { cache: "no-store" });
+        const res = await fetch(url, { cache: "no-store", signal: AbortSignal.timeout(30_000) });
         const teks = await res.text();
         if (!res.ok || !teks.startsWith("latitude")) throw new Error(`${sumber}: ${res.status} ${teks.slice(0, 120)}`);
         titik.push(...uraiCsv(teks, n).filter((t) => t[4] >= sejak));
@@ -121,9 +122,7 @@ export async function ambilHotspot(hari: number): Promise<ResponsHotspot> {
 
   return {
     demo: false,
-    hari,
     diperbarui: new Date().toISOString(),
-    sumber: SUMBER_FIRMS.filter((s) => !gagal.includes(s)),
     gagal,
     satelit: LABEL_SATELIT,
     provinsi: DAFTAR_PROVINSI,
@@ -188,7 +187,7 @@ function contohHotspot(hari: number): ResponsHotspot {
   for (const [lon, lat, n] of pusat) {
     for (let k = 0; k < n * hari; k++) {
       const r = acak() * 0.9, a = acak() * Math.PI * 2;
-      const frp = Math.round(acak() ** 3 * 120 * 10) / 10 + 1;
+      const frp = Math.round(acak() ** 3 * 120) + 1;
       const conf: TingkatKeyakinan = acak() > 0.75 ? 2 : acak() > 0.2 ? 1 : 0;
       const waktu = sekarang - Math.floor(acak() * hari * 1440);
       titik.push([lon + Math.cos(a) * r, lat + Math.sin(a) * r * 0.7, frp, conf, waktu, acak() > 0.5 ? 1 : 0, acak() > 0.3 ? 0 : 1, -1]);
@@ -197,9 +196,7 @@ function contohHotspot(hari: number): ResponsHotspot {
   lengkapiProvinsi(titik);
   return {
     demo: true,
-    hari,
     diperbarui: new Date().toISOString(),
-    sumber: [],
     gagal: [],
     satelit: LABEL_SATELIT,
     provinsi: DAFTAR_PROVINSI,

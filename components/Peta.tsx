@@ -140,8 +140,8 @@ function htmlTitik(f: MapGeoJSONFeature) {
       <div>${esc(formatJam(waktuTitik(Number(p.waktu)), zona))} · ${p.dn === "N" ? "malam" : "siang"}</div>
       <div>${p.prov ? esc(p.prov) : '<span style="color:var(--muted)">Di luar wilayah Indonesia</span>'}</div>
       <div>Keyakinan: <b>${esc(LABEL_KEYAKINAN[p.conf] ?? p.conf)}</b></div>
-      <div>Daya radiasi api: <b>${esc(Number(p.frp).toFixed(1))} MW</b></div>
-      <div style="color:var(--muted)">Satelit ${esc(p.sat)} · ${lat.toFixed(4)}, ${lon.toFixed(4)}</div>
+      <div>Daya radiasi api: <b>${Number(p.frp) < 1 ? "&lt;1" : esc(Number(p.frp))} MW</b></div>
+      <div style="color:var(--muted)">Satelit ${esc(p.sat)} · ${lat.toFixed(3)}, ${lon.toFixed(3)}</div>
       <a href="https://www.google.com/maps?q=${lat},${lon}" target="_blank" rel="noopener" style="color:var(--accent);font-weight:600">Buka di Google Maps</a>
     </div>`;
 }

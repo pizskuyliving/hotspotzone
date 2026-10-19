@@ -11,7 +11,7 @@ type OpenMeteo = { current?: Record<string, number | null> };
 
 async function ambil(url: string): Promise<OpenMeteo[]> {
   // no-store: hasil rute sudah di-cache ISR, cache kedua hanya menambah umur data.
-  const res = await fetch(url, { cache: "no-store" });
+  const res = await fetch(url, { cache: "no-store", signal: AbortSignal.timeout(30_000) });
   if (!res.ok) throw new Error(`${res.status} ${await res.text()}`);
   const json = await res.json();
   return Array.isArray(json) ? json : [json];

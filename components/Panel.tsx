@@ -7,6 +7,7 @@ import { LAYER_CITRA, tanggalLayer } from "@/lib/gibs";
 import type { Filter, Lapisan } from "./Aplikasi";
 import type { PetaHandle } from "./Peta";
 import GrafikTren from "./GrafikTren";
+import { formatJam } from "@/lib/zona";
 
 type Props = {
   hotspot: ResponsHotspot | null;
@@ -47,7 +48,6 @@ const CHIP: { kunci: keyof Lapisan; label: string; ikon: string }[] = [
 ];
 
 const fmtAngka = new Intl.NumberFormat("id-ID");
-const fmtJam = new Intl.DateTimeFormat("id-ID", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", timeZone: "Asia/Jakarta" });
 
 function relatif(d: Date | null, sekarang: number) {
   if (!d) return "memuat…";
@@ -241,7 +241,7 @@ export default function Panel(p: Props) {
             )}
           </div>
           <div className="mt-0.5 text-xs text-redup">
-            {terbaruWilayah ? `Deteksi terbaru ${fmtJam.format(terbaruWilayah)} WIB` : p.hotspot ? "Tidak ada deteksi" : " "}
+            {terbaruWilayah ? `Deteksi terbaru ${formatJam(terbaruWilayah, "WIB")}` : p.hotspot ? "Tidak ada deteksi" : " "}
             {!p.namaProv && ringkasan[0] && <> · terbanyak di <b className="text-teks">{ringkasan[0].nama}</b></>}
           </div>
           <div className={`mt-2 flex flex-wrap items-center gap-2 ${terbuka ? "" : "max-md:hidden"}`}>
@@ -356,7 +356,7 @@ export default function Panel(p: Props) {
                   .map(([sat, s]) => (
                     <li key={sat} className="flex justify-between gap-2">
                       <span>
-                        🛰️ {sat} <span className="text-redup">· lintas terakhir {fmtJam.format(waktuTitik(s.lintas))} WIB</span>
+                        🛰️ {sat} <span className="text-redup">· lintas terakhir {formatJam(waktuTitik(s.lintas), "WIB")}</span>
                       </span>
                       <b className="tabular-nums">{fmtAngka.format(s.jumlah)}</b>
                     </li>

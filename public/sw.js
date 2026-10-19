@@ -1,6 +1,10 @@
 // Service worker hotspotzone.id: agar tampilan dan data terakhir tetap bisa
 // dibuka saat sinyal hilang. Ganti VERSI bila strategi cache diubah.
-const VERSI = "hotspotzone-v2";
+const VERSI = "hotspotzone-v3";
+// Aset /_next/static/ berganti nama tiap deploy; cache terpisah ini dipangkas
+// agar file deploy lama tidak menumpuk di HP pengunjung.
+const STATIS = `${VERSI}-statis`;
+const MAKS_STATIS = 60;
 
 self.addEventListener("install", () => self.skipWaiting());
 
@@ -8,7 +12,7 @@ self.addEventListener("activate", (e) => {
   e.waitUntil(
     caches
       .keys()
-      .then((kunci) => Promise.all(kunci.filter((k) => k !== VERSI).map((k) => caches.delete(k))))
+      .then((kunci) => Promise.all(kunci.filter((k) => k !== VERSI && k !== STATIS).map((k) => caches.delete(k))))
       .then(() => self.clients.claim()),
   );
 });
@@ -16,13 +20,18 @@ self.addEventListener("activate", (e) => {
 // Simpan salinan di latar belakang. Gagal menyimpan (kuota penuh, mode privat)
 // tidak boleh menggagalkan respons yang sudah berhasil diambil. Hanya respons
 // sukses: halaman tantangan firewall (403) atau galat tidak ikut tersimpan.
-function simpanLatar(e, req, res) {
+function simpanLatar(e, req, res, nama = VERSI, maks = Infinity) {
   if (res.ok && res.type === "basic") {
     const salinan = res.clone();
     e.waitUntil(
       caches
-        .open(VERSI)
-        .then((c) => c.put(req, salinan))
+        .open(nama)
+        .then(async (c) => {
+          await c.put(req, salinan);
+          // keys() berurutan dari yang tersimpan paling awal.
+          const k = await c.keys();
+          await Promise.all(k.slice(0, Math.max(0, k.length - maks)).map((x) => c.delete(x)));
+        })
         .catch(() => {}),
     );
   }
@@ -42,7 +51,7 @@ self.addEventListener("fetch", (e) => {
       caches
         .match(req)
         .catch(() => undefined)
-        .then((ada) => ada ?? fetch(req).then((res) => simpanLatar(e, req, res))),
+        .then((ada) => ada ?? fetch(req).then((res) => simpanLatar(e, req, res, STATIS, MAKS_STATIS))),
     );
     return;
   }
