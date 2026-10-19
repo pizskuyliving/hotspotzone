@@ -411,6 +411,11 @@ export default function Panel(p: Props) {
                 Jumlah deteksi per hari (WIB) dari ketiga satelit. Satu kebakaran bisa terdeteksi lebih dari sekali.
               </p>
               <GrafikTren hari={p.tren!.hari} nilai={trenTampil} judul={`Jumlah deteksi titik api per hari, ${p.namaProv ?? "Indonesia"}`} />
+              {!!p.tren!.gagal.length && (
+                <div className="mt-2 rounded-xl bg-amber-500/15 px-3 py-2 text-xs text-amber-700 dark:text-amber-300">
+                  Sebagian satelit belum terambil ({p.tren!.gagal.length} dari 3), tren bisa lebih rendah dari sebenarnya.
+                </div>
+              )}
             </>
           )}
 
@@ -448,7 +453,10 @@ export default function Panel(p: Props) {
             </button>
           )}
 
-          <h2 className="mt-5 mb-2 text-sm font-bold">Kualitas udara terburuk saat ini</h2>
+          <h2 className="mt-5 mb-2 text-sm font-bold">
+            Kualitas udara terburuk
+            {p.udara && <span className="font-normal text-redup"> · diperbarui {relatif(new Date(p.udara.diperbarui), sekarang)}</span>}
+          </h2>
           {kotaTerburuk.length === 0 ? (
             <p className="text-sm text-redup">{p.udara ? "Data kualitas udara belum tersedia." : "Memuat…"}</p>
           ) : (

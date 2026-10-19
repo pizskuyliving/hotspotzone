@@ -26,8 +26,9 @@ export async function GET() {
   ]);
   if (udara.status === "rejected") console.error("Open-Meteo kualitas udara gagal", udara.reason);
   if (angin.status === "rejected") console.error("Open-Meteo angin gagal", angin.reason);
-  // Keduanya gagal: biarkan ISR menyajikan data terakhir yang berhasil.
-  if (udara.status === "rejected" && angin.status === "rejected" && !sedangBuild()) throw new Error("Open-Meteo gagal");
+  // Salah satu gagal: biarkan ISR menyajikan data terakhir yang berhasil, bukan
+  // menyimpan AQI atau angin kosong selama sejam.
+  if ((udara.status === "rejected" || angin.status === "rejected") && !sedangBuild()) throw new Error("Open-Meteo gagal");
 
   const kota: UdaraKota[] = KOTA.map((k, n) => {
     const u = udara.status === "fulfilled" ? udara.value[n]?.current : undefined;
@@ -42,10 +43,5 @@ export async function GET() {
     };
   });
 
-  const data: ResponsUdara = {
-    diperbarui: new Date().toISOString(),
-    kota,
-    gagal: udara.status === "rejected" && angin.status === "rejected",
-  };
-  return Response.json(data);
+  return Response.json({ diperbarui: new Date().toISOString(), kota } satisfies ResponsUdara);
 }

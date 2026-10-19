@@ -60,17 +60,23 @@ export default function Aplikasi() {
     window.history.replaceState(null, "", `${window.location.pathname}${cari}`);
   }, [urlDibaca, hari, prov, lapisan, filter, tanggal]);
 
+  const hariRef = useRef(hari);
+  hariRef.current = hari;
+
   // diam = pembaruan otomatis di latar: data lama tetap tampil, tanpa indikator memuat.
+  // Jawaban untuk rentang yang sudah tidak dipilih (datang belakangan) diabaikan.
   const muatHotspot = useCallback(async (h: number, diam = false) => {
     if (!diam) setMemuat(true);
     try {
-      setHotspot(await ambilJson<ResponsHotspot>(`/api/hotspot/${h}`));
+      const data = await ambilJson<ResponsHotspot>(`/api/hotspot/${h}`);
+      if (h !== hariRef.current) return;
+      setHotspot(data);
       setGalat(null);
       setDicek(new Date());
     } catch {
-      if (!diam) setGalat("Data titik api belum bisa dimuat. Coba lagi sebentar.");
+      if (!diam && h === hariRef.current) setGalat("Data titik api belum bisa dimuat. Coba lagi sebentar.");
     } finally {
-      if (!diam) setMemuat(false);
+      if (!diam && h === hariRef.current) setMemuat(false);
     }
   }, []);
 

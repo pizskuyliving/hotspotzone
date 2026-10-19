@@ -1,4 +1,5 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { GET as getUdara } from "@/app/api/udara/route";
 import { kategoriAqi } from "./aqi";
 import { tanggalCitraDefault, tanggalLayer, urlWms, LAYER_CITRA } from "./gibs";
 import { cariProvinsi, indeksProvinsi, NAMA_PROVINSI, ringkasProvinsi } from "./provinsi";
@@ -72,5 +73,18 @@ describe("gibs", () => {
     const url = urlWms(LAYER_CITRA[0], "2026-10-18");
     expect(url).toContain("&BBOX={bbox-epsg-3857}");
     expect(url).toContain("TIME=2026-10-18");
+  });
+});
+
+describe("rute udara", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+  });
+
+  it("salah satu sumber Open-Meteo gagal: lempar galat agar ISR menyimpan data lama", async () => {
+    vi.stubGlobal("fetch", vi.fn(async (url: string) => (url.includes("air-quality") ? new Response("galat", { status: 500 }) : Response.json([]))));
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    await expect(getUdara()).rejects.toThrow();
   });
 });

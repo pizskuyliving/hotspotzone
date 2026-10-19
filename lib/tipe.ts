@@ -47,7 +47,6 @@ export type UdaraKota = {
 export type ResponsUdara = {
   diperbarui: string;
   kota: UdaraKota[];
-  gagal: boolean;
 };
 
 export type StasiunAqi = {
