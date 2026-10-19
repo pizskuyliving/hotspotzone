@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import { URL_SITUS } from "./lib/situs";
 
 // HSTS sudah dipasang otomatis oleh Vercel.
 const HEADER_KEAMANAN = [
@@ -16,6 +17,11 @@ const nextConfig: NextConfig = {
   async headers() {
     return [
       { source: "/:path*", headers: HEADER_KEAMANAN },
+      // Vercel memasang Access-Control-Allow-Origin: * di semua respons. Data API
+      // hanya untuk situs ini; situs lain tidak boleh memakainya dari browser
+      // pengunjung mereka (bandwidth kita yang terpakai). Permintaan dari domain
+      // sendiri tidak memerlukan CORS, jadi tidak terpengaruh.
+      { source: "/api/:path*", headers: [{ key: "Access-Control-Allow-Origin", value: URL_SITUS }] },
       // Service worker harus selalu dicek ulang agar versi baru cepat terpasang.
       { source: "/sw.js", headers: [{ key: "Cache-Control", value: "no-cache" }] },
     ];
