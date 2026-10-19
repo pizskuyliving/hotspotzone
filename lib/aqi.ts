@@ -10,6 +10,8 @@ export const KATEGORI_AQI = [
 
 export function kategoriAqi(aqi: number | null | undefined) {
   if (aqi == null || Number.isNaN(aqi)) return { label: "Tidak ada data", warna: "#8a8f98" };
+  // Skala US AQI resmi berhenti di 500; model CAMS bisa memberi nilai lebih tinggi saat kabut asap parah.
+  if (aqi > 500) return { label: "Berbahaya, melewati skala AQI (>500)", warna: KATEGORI_AQI[5].warna };
   return KATEGORI_AQI.find((k) => aqi <= k.batas)!;
 }
 

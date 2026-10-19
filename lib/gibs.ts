@@ -9,8 +9,10 @@ export type LayerCitra = {
   layer: string;
   format: "image/jpeg" | "image/png";
   opasitas: number;
-  // Berapa hari data layer ini tertinggal (UTC). MODIS MAIAC baru lengkap ~H+1.
-  jedaHari: number;
+  // Tanggal D (UTC) baru dipakai setelah sekian jam sejak awal tanggal D.
+  // MODIS MAIAC (AOD) teramati baru tersedia 6-14 jam setelah hari D berakhir,
+  // jadi 38 jam (24 + 14) agar peta asap tidak pernah kosong.
+  jedaJam: number;
 };
 
 export const LAYER_CITRA: LayerCitra[] = [
@@ -21,7 +23,7 @@ export const LAYER_CITRA: LayerCitra[] = [
     layer: "VIIRS_NOAA20_CorrectedReflectance_TrueColor",
     format: "image/jpeg",
     opasitas: 1,
-    jedaHari: 0,
+    jedaJam: 0,
   },
   {
     id: "aod",
@@ -30,16 +32,14 @@ export const LAYER_CITRA: LayerCitra[] = [
     layer: "MODIS_Combined_MAIAC_L2G_AerosolOpticalDepth",
     format: "image/png",
     opasitas: 0.75,
-    jedaHari: 1,
+    jedaJam: 38,
   },
 ];
 
 // Tanggal yang benar-benar dipakai: tanggal terpilih, atau tanggal terbaru yang
 // sudah tersedia bila layer ini tertinggal (agar peta asap tidak kosong).
 export function tanggalLayer(l: LayerCitra, tanggal: string, sekarang = new Date()) {
-  const d = new Date(sekarang);
-  d.setUTCDate(d.getUTCDate() - l.jedaHari);
-  const batas = d.toISOString().slice(0, 10);
+  const batas = new Date(sekarang.getTime() - l.jedaJam * 3600000).toISOString().slice(0, 10);
   return tanggal > batas ? batas : tanggal;
 }
 

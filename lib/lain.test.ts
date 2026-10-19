@@ -10,6 +10,7 @@ describe("kategoriAqi", () => {
     expect(kategoriAqi(51).label).toBe("Sedang");
     expect(kategoriAqi(151).label).toBe("Tidak sehat");
     expect(kategoriAqi(500).label).toBe("Berbahaya");
+    expect(kategoriAqi(902).label).toBe("Berbahaya, melewati skala AQI (>500)");
     expect(kategoriAqi(null).label).toBe("Tidak ada data");
     expect(kategoriAqi(NaN).label).toBe("Tidak ada data");
   });
@@ -60,10 +61,11 @@ describe("gibs", () => {
 
   it("peta asap memakai tanggal terbaru yang sudah tersedia", () => {
     const aod = LAYER_CITRA.find((l) => l.id === "aod")!;
-    const kini = new Date("2026-10-18T13:00:00Z");
-    expect(tanggalLayer(aod, "2026-10-18", kini)).toBe("2026-10-17");
-    expect(tanggalLayer(aod, "2026-10-15", kini)).toBe("2026-10-15");
-    expect(tanggalLayer(LAYER_CITRA[0], "2026-10-18", kini)).toBe("2026-10-18");
+    // Teramati: 18 Okt belum ada pada 19 Okt 05.19 UTC; 17 Okt sudah ada pada 18 Okt 13.40 UTC.
+    expect(tanggalLayer(aod, "2026-10-19", new Date("2026-10-19T05:19:00Z"))).toBe("2026-10-17");
+    expect(tanggalLayer(aod, "2026-10-19", new Date("2026-10-19T15:00:00Z"))).toBe("2026-10-18");
+    expect(tanggalLayer(aod, "2026-10-15", new Date("2026-10-19T05:19:00Z"))).toBe("2026-10-15");
+    expect(tanggalLayer(LAYER_CITRA[0], "2026-10-18", new Date("2026-10-18T13:00:00Z"))).toBe("2026-10-18");
   });
 
   it("placeholder bbox MapLibre tidak di-encode", () => {
