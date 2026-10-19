@@ -160,7 +160,7 @@ function htmlUdara(f: MapGeoJSONFeature) {
       <div style="font-weight:700;font-size:15px">${esc(p.kota)}</div>
       <div style="display:flex;align-items:center;gap:8px;margin:6px 0">
         <span style="background:${k.warna};color:#fff;font-weight:700;border-radius:8px;padding:2px 8px">${aqi >= 0 ? aqi : "–"}</span>
-        <span>${esc(k.label)}</span>
+        <span>${esc(k.label)} <span style="color:var(--muted);font-size:11px">· US AQI</span></span>
       </div>
       <div>PM2.5: <b>${p.pm25 != null && p.pm25 !== "null" ? Number(p.pm25).toFixed(1) : "–"}</b> µg/m³ · PM10: ${p.pm10 != null && p.pm10 !== "null" ? Number(p.pm10).toFixed(0) : "–"}</div>
       <div>${esc(angin)}</div>
@@ -190,7 +190,7 @@ function htmlStasiun(f: MapGeoJSONFeature, sumberAqi: Record<string, SumberAqi[]
       <div style="font-weight:700;font-size:14px">${esc(p.nama)}</div>
       <div style="display:flex;align-items:center;gap:8px;margin:6px 0">
         <span style="background:${k.warna};color:#fff;font-weight:700;border-radius:8px;padding:2px 8px">${esc(p.aqi)}</span>
-        <span>${esc(k.label)}</span>
+        <span>${esc(k.label)} <span style="color:var(--muted);font-size:11px">· US AQI</span></span>
       </div>
       ${diukur ? `<div style="color:var(--muted)">${esc(diukur)}</div>` : ""}
       <div style="margin-top:6px;font-weight:600">Stasiun ukur darat</div>
