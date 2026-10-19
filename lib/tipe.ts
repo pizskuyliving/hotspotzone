@@ -70,3 +70,10 @@ export type ResponsTren = {
   nasional: number[]; // jumlah deteksi per hari
   provinsi: Record<string, number[]>; // nama provinsi -> jumlah deteksi per hari
 };
+
+export type SumberAqi = { nama: string; url: string };
+
+export type ResponsSumberAqi = {
+  diperbarui: string;
+  stasiun: Record<string, SumberAqi[]>; // uid stasiun WAQI -> sumber asli datanya
+};

@@ -1,6 +1,6 @@
 import { sedangBuild } from "@/lib/build";
-import { BBOX_INDONESIA } from "@/lib/firms";
 import type { ResponsAqi, StasiunAqi } from "@/lib/tipe";
+import { ambilPetaWaqi } from "@/lib/waqi";
 
 // Stasiun darat dari WAQI (aqicn.org). Cache singkat hanya untuk menghemat
 // kuota; syarat WAQI melarang menyimpan atau mengarsipkan datanya.
@@ -8,22 +8,13 @@ export const revalidate = 600;
 // Tetap ISR walau fetch ke sumber memakai no-store.
 export const dynamic = "force-static";
 
-type WaqiStasiun = { lat: number; lon: number; uid: number; aqi: string; station?: { name?: string; time?: string } };
-
 export async function GET() {
   const token = process.env.WAQI_TOKEN;
   const kosong: ResponsAqi = { aktif: false, diperbarui: new Date().toISOString(), stasiun: [] };
   if (!token) return Response.json(kosong);
 
-  const [barat, selatan, timur, utara] = BBOX_INDONESIA.split(",");
   try {
-    const res = await fetch(
-      `https://api.waqi.info/v2/map/bounds?latlng=${selatan},${barat},${utara},${timur}&networks=all&token=${encodeURIComponent(token)}`,
-      { cache: "no-store", signal: AbortSignal.timeout(30_000) },
-    );
-    const json = (await res.json()) as { status: string; data: WaqiStasiun[] | string };
-    if (json.status !== "ok" || !Array.isArray(json.data)) throw new Error(String(json.data));
-    const stasiun: StasiunAqi[] = json.data
+    const stasiun: StasiunAqi[] = (await ambilPetaWaqi(token))
       .map((s) => ({
         uid: s.uid,
         nama: s.station?.name ?? "Stasiun",

@@ -12,7 +12,7 @@ import {
   type RasterTileSource,
   setWorkerUrl,
 } from "maplibre-gl";
-import { KEYAKINAN, waktuTitik, type Bbox, type StasiunAqi, type TitikApi, type UdaraKota } from "@/lib/tipe";
+import { KEYAKINAN, waktuTitik, type Bbox, type StasiunAqi, type SumberAqi, type TitikApi, type UdaraKota } from "@/lib/tipe";
 import { formatJam, zonaWaktu } from "@/lib/zona";
 import { EKSPRESI_WARNA_AQI, kategoriAqi } from "@/lib/aqi";
 import { LAYER_CITRA, urlWms } from "@/lib/gibs";
@@ -29,6 +29,7 @@ type Props = {
   provinsi: { nama: string; bbox: Bbox }[];
   udara: UdaraKota[];
   stasiun: StasiunAqi[];
+  sumberAqi: Record<string, SumberAqi[]>;
   lapisan: Lapisan;
   tanggal: string;
   onSiap: (h: PetaHandle) => void;
@@ -163,13 +164,24 @@ function htmlUdara(f: MapGeoJSONFeature) {
       </div>
       <div>PM2.5: <b>${p.pm25 != null && p.pm25 !== "null" ? Number(p.pm25).toFixed(1) : "–"}</b> µg/m³ · PM10: ${p.pm10 != null && p.pm10 !== "null" ? Number(p.pm10).toFixed(0) : "–"}</div>
       <div>${esc(angin)}</div>
-      <div style="color:var(--muted);font-size:11px;margin-top:4px">Model CAMS via Open-Meteo, bukan stasiun ukur</div>
+      <div style="margin-top:6px;font-weight:600">Perkiraan model</div>
+      <div style="color:var(--muted);font-size:11px">CAMS via Open-Meteo, bukan hasil ukur stasiun</div>
+      <a href="${URL_ISPU}" target="_blank" rel="noopener noreferrer" style="color:var(--accent);font-weight:600">Cek data resmi ISPU</a>
     </div>`;
 }
 
-function htmlStasiun(f: MapGeoJSONFeature) {
+// Situs resmi Indeks Standar Pencemar Udara (KLH). Alamat lama ispu.menlhk.go.id sudah tidak menjawab.
+const URL_ISPU = "https://ispu.kemenlh.go.id/";
+// Cadangan bila sumber asli stasiun belum termuat atau gagal diambil.
+const SUMBER_WAQI: SumberAqi[] = [{ nama: "World Air Quality Index Project", url: "https://waqi.info/" }];
+
+function htmlStasiun(f: MapGeoJSONFeature, sumberAqi: Record<string, SumberAqi[]>) {
   const p = f.properties as Record<string, unknown>;
   const k = kategoriAqi(Number(p.aqi));
+  // URL sudah disaring http(s) di server (lib/waqi.ts); tetap di-escape untuk atribut.
+  const sumber = (sumberAqi[String(p.uid)] ?? SUMBER_WAQI)
+    .map((s) => `<a href="${esc(s.url)}" target="_blank" rel="noopener noreferrer" style="color:var(--accent)">${esc(s.nama)}</a>`)
+    .join(" · ");
   return `
     <div style="font-size:13px;line-height:1.5">
       <div style="font-weight:700;font-size:14px">${esc(p.nama)}</div>
@@ -178,16 +190,17 @@ function htmlStasiun(f: MapGeoJSONFeature) {
         <span>${esc(k.label)}</span>
       </div>
       ${p.waktu && p.waktu !== "null" ? `<div style="color:var(--muted)">Diukur ${esc(p.waktu)}</div>` : ""}
-      <div style="color:var(--muted);font-size:11px;margin-top:4px">Stasiun darat · World Air Quality Index</div>
+      <div style="margin-top:6px;font-weight:600">Stasiun ukur darat</div>
+      <div style="font-size:11px">Sumber: ${sumber}</div>
     </div>`;
 }
 
-export default function Peta({ titik, satelit, provinsi, udara, stasiun, lapisan, tanggal, onSiap }: Props) {
+export default function Peta({ titik, satelit, provinsi, udara, stasiun, sumberAqi, lapisan, tanggal, onSiap }: Props) {
   const wadah = useRef<HTMLDivElement>(null);
   const petaRef = useRef<PetaMaplibre | null>(null);
   const siap = useRef(false);
-  const terakhir = useRef({ titik, satelit, provinsi, udara, stasiun, lapisan, tanggal });
-  terakhir.current = { titik, satelit, provinsi, udara, stasiun, lapisan, tanggal };
+  const terakhir = useRef({ titik, satelit, provinsi, udara, stasiun, sumberAqi, lapisan, tanggal });
+  terakhir.current = { titik, satelit, provinsi, udara, stasiun, sumberAqi, lapisan, tanggal };
 
   useEffect(() => {
     if (!wadah.current) return;
@@ -373,7 +386,7 @@ export default function Peta({ titik, satelit, provinsi, udara, stasiun, lapisan
           [e.point.x + r, e.point.y + r],
         ];
         const urutan: [string[], (f: MapGeoJSONFeature) => string][] = [
-          [LAYER_STASIUN, htmlStasiun],
+          [LAYER_STASIUN, (f) => htmlStasiun(f, terakhir.current.sumberAqi)],
           [LAYER_UDARA, htmlUdara],
           [["titik-inti"], htmlTitik],
         ];

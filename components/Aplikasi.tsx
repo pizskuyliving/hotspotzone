@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
-import { YAKIN_TINGGI, type ResponsAqi, type ResponsHotspot, type ResponsTren, type ResponsUdara } from "@/lib/tipe";
+import { YAKIN_TINGGI, type ResponsAqi, type ResponsHotspot, type ResponsSumberAqi, type ResponsTren, type ResponsUdara } from "@/lib/tipe";
 import { tanggalCitraDefault } from "@/lib/gibs";
 import { LAPISAN_BAWAAN, bacaTautan, slug, tulisTautan, type KunciLapisan } from "@/lib/tautan";
 import Panel from "./Panel";
@@ -32,6 +32,7 @@ export default function Aplikasi() {
   const [udara, setUdara] = useState<ResponsUdara | null>(null);
   const [aqi, setAqi] = useState<ResponsAqi | null>(null);
   const [tren, setTren] = useState<ResponsTren | null>(null);
+  const [sumberAqi, setSumberAqi] = useState<ResponsSumberAqi | null>(null);
   const [memuat, setMemuat] = useState(true);
   const [galat, setGalat] = useState<string | null>(null);
   const [peta, setPeta] = useState<PetaHandle | null>(null);
@@ -91,6 +92,10 @@ export default function Aplikasi() {
   }, [urlDibaca, hari, muatHotspot]);
 
   useEffect(muatUdara, [muatUdara]);
+  // Sumber asli stasiun hanya berubah harian: cukup dimuat sekali, tidak ikut pemantauan 10 menit.
+  useEffect(() => {
+    ambilJson<ResponsSumberAqi>("/api/aqi/sumber").then(setSumberAqi).catch(() => {});
+  }, []);
 
   // Pemantauan otomatis: muat ulang tiap 10 menit, dan langsung saat tab
   // dibuka lagi setelah lama ditinggal (misalnya HP baru dibuka kuncinya).
@@ -155,6 +160,7 @@ export default function Aplikasi() {
         provinsi={hotspot?.provinsi ?? []}
         udara={udara?.kota ?? []}
         stasiun={aqi?.stasiun ?? []}
+        sumberAqi={sumberAqi?.stasiun ?? {}}
         lapisan={lapisan}
         tanggal={tanggal}
         onSiap={setPeta}

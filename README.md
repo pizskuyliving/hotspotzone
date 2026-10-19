@@ -46,7 +46,7 @@ Pemeriksaan: `npm run lint` (tipe), `npm test` (tes unit), `npm run build`. Keti
 4. Klik **Deploy**. Paket Hobby (gratis) cukup.
 
 Tidak perlu cron. Rute API memakai ISR: `/api/hotspot/[1|2|3]` disegarkan paling sering tiap 15 menit,
-`/api/aqi` tiap 10 menit, `/api/udara` tiap jam, `/api/tren` tiap 3 jam. Jadi FIRMS dan Open-Meteo tetap dipanggil jarang
+`/api/aqi` tiap 10 menit, `/api/udara` tiap jam, `/api/tren` tiap 3 jam, `/api/aqi/sumber` tiap hari (~190 panggilan WAQI per hari). Jadi FIRMS dan Open-Meteo tetap dipanggil jarang
 walaupun pengunjungnya banyak.
 
 ## Struktur
@@ -55,6 +55,7 @@ walaupun pengunjungnya banyak.
 app/api/hotspot/[hari]/route.ts   FIRMS -> titik ringkas + ringkasan provinsi
 app/api/udara/route.ts            Open-Meteo: AQI, PM2.5, PM10, angin per kota
 app/api/aqi/route.ts              Stasiun WAQI (opsional)
+app/api/aqi/sumber/route.ts       Sumber asli tiap stasiun WAQI (atribusi), untuk popup
 components/Peta.tsx               Peta MapLibre + layer GIBS
 components/Panel.tsx              Panel desktop / bottom sheet HP
 lib/                              Pengambil data, kategori AQI, kota, provinsi
