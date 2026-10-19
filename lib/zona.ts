@@ -23,6 +23,16 @@ export function zonaWaktu(provinsi: string | null | undefined, bujur: number): Z
 }
 
 const FORMAT = new Map<Zona, Intl.DateTimeFormat>();
+// Teks "Diukur …" untuk popup stasiun. Beberapa stasiun KLHK di WITA/WIT
+// mencatat jam 1-2 jam lebih maju (selisih zona terhitung dua kali), tapi tidak
+// semua, jadi tidak bisa dikoreksi otomatis; jam di masa depan diberi tanda.
+export function teksDiukur(waktu: string | null | undefined, zona: Zona, sekarang = Date.now()) {
+  const ms = Date.parse(waktu ?? "");
+  if (!Number.isFinite(ms)) return null;
+  const jam = `Diukur ${formatJam(new Date(ms), zona)}`;
+  return ms > sekarang ? `${jam} (jam dari sumber lebih maju dari sekarang)` : jam;
+}
+
 export function formatJam(d: Date, zona: Zona) {
   let f = FORMAT.get(zona);
   if (!f) {

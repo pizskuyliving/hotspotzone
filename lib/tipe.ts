@@ -1,3 +1,5 @@
+import type { Zona } from "./zona";
+
 // Satu titik api dikirim ke browser sebagai tuple angka agar respons kecil
 // (data 72 jam di puncak musim karhutla bisa >60 ribu titik, sedangkan
 // batas respons Vercel Function 4,5 MB).
@@ -53,7 +55,8 @@ export type StasiunAqi = {
   lat: number;
   lon: number;
   aqi: number;
-  waktu: string | null;
+  waktu: string | null; // ISO dari WAQI, bisa "…Z" atau "…+09:00"
+  zona: Zona; // zona waktu lokasi stasiun, dari provinsinya
 };
 
 export type ResponsAqi = {

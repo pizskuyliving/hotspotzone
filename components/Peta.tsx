@@ -13,7 +13,7 @@ import {
   setWorkerUrl,
 } from "maplibre-gl";
 import { KEYAKINAN, waktuTitik, type Bbox, type StasiunAqi, type SumberAqi, type TitikApi, type UdaraKota } from "@/lib/tipe";
-import { formatJam, zonaWaktu } from "@/lib/zona";
+import { formatJam, teksDiukur, zonaWaktu, type Zona } from "@/lib/zona";
 import { EKSPRESI_WARNA_AQI, kategoriAqi } from "@/lib/aqi";
 import { LAYER_CITRA, urlWms } from "@/lib/gibs";
 import type { Lapisan } from "./Aplikasi";
@@ -178,6 +178,9 @@ const SUMBER_WAQI: SumberAqi[] = [{ nama: "World Air Quality Index Project", url
 function htmlStasiun(f: MapGeoJSONFeature, sumberAqi: Record<string, SumberAqi[]>) {
   const p = f.properties as Record<string, unknown>;
   const k = kategoriAqi(Number(p.aqi));
+  // Respons lama (cache offline) belum punya zona: perkiraan dari bujur.
+  const zona = (p.zona as Zona | undefined) ?? zonaWaktu(null, (f.geometry as GeoJSON.Point).coordinates[0]);
+  const diukur = teksDiukur(p.waktu as string | null, zona);
   // URL sudah disaring http(s) di server (lib/waqi.ts); tetap di-escape untuk atribut.
   const sumber = (sumberAqi[String(p.uid)] ?? SUMBER_WAQI)
     .map((s) => `<a href="${esc(s.url)}" target="_blank" rel="noopener noreferrer" style="color:var(--accent)">${esc(s.nama)}</a>`)
@@ -189,7 +192,7 @@ function htmlStasiun(f: MapGeoJSONFeature, sumberAqi: Record<string, SumberAqi[]
         <span style="background:${k.warna};color:#fff;font-weight:700;border-radius:8px;padding:2px 8px">${esc(p.aqi)}</span>
         <span>${esc(k.label)}</span>
       </div>
-      ${p.waktu && p.waktu !== "null" ? `<div style="color:var(--muted)">Diukur ${esc(p.waktu)}</div>` : ""}
+      ${diukur ? `<div style="color:var(--muted)">${esc(diukur)}</div>` : ""}
       <div style="margin-top:6px;font-weight:600">Stasiun ukur darat</div>
       <div style="font-size:11px">Sumber: ${sumber}</div>
     </div>`;

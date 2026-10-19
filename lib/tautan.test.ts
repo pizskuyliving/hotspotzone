@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { LAPISAN_BAWAAN, bacaTautan, slug, tulisTautan } from "./tautan";
-import { formatJam, zonaWaktu } from "./zona";
+import { formatJam, teksDiukur, zonaWaktu } from "./zona";
 
 describe("tautan", () => {
   it("bawaan menghasilkan URL tanpa query", () => {
@@ -42,5 +42,29 @@ describe("zona waktu", () => {
     expect(formatJam(d, "WIB")).toMatch(/12[.:]42 WIB$/);
     expect(formatJam(d, "WITA")).toMatch(/13[.:]42 WITA$/);
     expect(formatJam(d, "WIT")).toMatch(/14[.:]42 WIT$/);
+  });
+});
+
+describe("teksDiukur (jam stasiun WAQI)", () => {
+  const kini = Date.parse("2026-10-19T07:46:00Z");
+
+  it("membaca stempel Z dan stempel berzona sebagai jam yang sama", () => {
+    // Palangka Raya dikirim "+09:00", Jakarta "Z": keduanya 07:00 UTC = 14.00 WIB.
+    expect(teksDiukur("2026-10-19T16:00:00+09:00", "WIB", kini)).toMatch(/^Diukur .*14[.:]00 WIB$/);
+    expect(teksDiukur("2026-10-19T07:00:00Z", "WIB", kini)).toMatch(/^Diukur .*14[.:]00 WIB$/);
+  });
+
+  it("memakai zona lokasi stasiun", () => {
+    expect(teksDiukur("2026-10-19T07:00:00Z", "WIT", kini)).toMatch(/16[.:]00 WIT$/);
+  });
+
+  it("jam di masa depan diberi tanda, bukan ditampilkan seolah benar", () => {
+    // Kendari (KLHK, WITA): stempel 08:00Z saat sekarang 07:46Z.
+    expect(teksDiukur("2026-10-19T08:00:00Z", "WITA", kini)).toMatch(/16[.:]00 WITA \(jam dari sumber lebih maju dari sekarang\)$/);
+  });
+
+  it("waktu kosong atau rusak tidak ditampilkan", () => {
+    expect(teksDiukur(null, "WIB", kini)).toBeNull();
+    expect(teksDiukur("null", "WIB", kini)).toBeNull();
   });
 });

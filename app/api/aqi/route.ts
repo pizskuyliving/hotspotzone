@@ -1,6 +1,8 @@
 import { sedangBuild } from "@/lib/build";
 import type { ResponsAqi, StasiunAqi } from "@/lib/tipe";
 import { ambilPetaWaqi } from "@/lib/waqi";
+import { cariProvinsi } from "@/lib/provinsi";
+import { zonaWaktu } from "@/lib/zona";
 
 // Stasiun darat dari WAQI (aqicn.org). Cache singkat hanya untuk menghemat
 // kuota; syarat WAQI melarang menyimpan atau mengarsipkan datanya.
@@ -22,6 +24,8 @@ export async function GET() {
         lon: s.lon,
         aqi: Number(s.aqi),
         waktu: s.station?.time ?? null,
+        // Dihitung di server: data provinsi tidak ikut dikirim ke browser.
+        zona: zonaWaktu(cariProvinsi(s.lon, s.lat), s.lon),
       }))
       .filter((s) => Number.isFinite(s.aqi));
     return Response.json({ aktif: true, diperbarui: new Date().toISOString(), stasiun } satisfies ResponsAqi);
